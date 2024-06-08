@@ -1,0 +1,13 @@
+.player-body {
+  width: 90px;
+  height: 90px;
+  background-color: rgb(0, 147, 10);
+  border-top-left-radius: 90px;
+  border-top-right-radius: 90px;
+  border: 2px solid rgb(0, 0, 0);
+  border-bottom: 0;
+}
+
+.player-face {
+  max-width: 50px;
+}
