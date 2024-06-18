@@ -1,18 +1,15 @@
-import React from 'react'
-import './App.css'
-import GameTable from './components/GameTable'
-import CardDeck from './components/CardDeck'
+import Game from './components/Game'
+import MainMenu from './components/MainMenu'
+import { Routes, Route } from 'react-router-dom';
 
-function App() {
+const App = () => {
 
   return (
-    <div className="container">
-      <div className="game-area">
-        <GameTable/>
-        <CardDeck/>
-      </div>
-    </div>
+    <Routes>
+      <Route path="/" element={<MainMenu />} />
+      <Route path="/games/:gameId" element={<Game />} />
+    </Routes>
   )
-}
+};
 
 export default App
