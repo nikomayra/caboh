@@ -14,7 +14,9 @@ const gameSchema = new mongoose.Schema({
     },
   ],
   curPlayerTurn: {
+    //username
     type: String,
+    default: '',
   },
   hasStarted: {
     type: Boolean,

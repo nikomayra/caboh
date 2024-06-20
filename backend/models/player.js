@@ -9,7 +9,7 @@ const playerSchema = new mongoose.Schema({
   hand: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Card', // Reference to the Card schema
+      ref: 'Card',
     },
   ],
   gameId: {

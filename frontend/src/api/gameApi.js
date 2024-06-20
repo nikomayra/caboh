@@ -5,7 +5,7 @@ let token = null;
 
 const setToken = (newToken) => {
   token = `Bearer ${newToken}`;
-  console.log('setToken: ' + token);
+  //console.log('setToken: ' + token);
 };
 
 const createGame = async () => {
@@ -25,7 +25,7 @@ const startGame = async (gameId) => {
   const config = {
     headers: { Authorization: token },
   };
-  console.log('POST config: ' + config.headers['Authorization']);
+  //console.log('POST config: ' + config.headers['Authorization']);
   await axios.post(`${baseUrl}/start-game/${gameId}`, null, config);
 };
 
@@ -40,4 +40,59 @@ const reset = async () => {
   return response.data.message;
 };
 
-export default { setToken, createGame, joinGame, fetchGame, startGame, reset };
+const initialRevealSelectedCardsSelf = async (gameId) => {
+  //Parameters - 2 card positions (1, 2, 3, 4) & token
+  //Server Actions - lookup cards in player.hand database
+  //Return - card object array (suit/value), length 2
+  const handPositions = [1, 1, 0, 0];
+  for (let i = handPositions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [handPositions[i], handPositions[j]] = [handPositions[j], handPositions[i]];
+  }
+  const randomCardIndexArray = handPositions;
+  //console.log('randomCardIndexArray: ' + randomCardIndexArray);
+  const config = {
+    headers: {
+      Authorization: token,
+      cardIndexes: randomCardIndexArray,
+      init: 'true',
+    },
+  };
+  const response = await axios.get(`${baseUrl}/fetch-cards/${gameId}`, config);
+  return response.data;
+};
+
+const endTurn = async (gameId) => {
+  //Parameters - token
+  //Server Actions - increment current player turn making sure to loop at player.length to 0
+  //Return - current player turn as index
+  const config = {
+    headers: { Authorization: token },
+  };
+  await axios.post(`${baseUrl}/end-turn/${gameId}`, null, config);
+};
+
+//7 & 8 ability
+const revealSelectedCardSelf = async () => {
+  //Parameters - 1 card positions (1, 2, 3, 4) & token
+  //Server Actions - lookup card in player.hand database
+  //Return - card object (suit/value)
+};
+
+//9 & 10 ability
+const revealSelectedCardOtherPlayer = async () => {
+  //Parameters - 1 card positions (1, 2, 3, 4) & other player id or username? & token
+  //Server Actions - lookup card in player.hand database
+  //Return - card object (suit/value)
+};
+
+export default {
+  setToken,
+  createGame,
+  joinGame,
+  fetchGame,
+  startGame,
+  reset,
+  initialRevealSelectedCardsSelf,
+  endTurn,
+};
