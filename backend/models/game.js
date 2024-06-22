@@ -22,6 +22,20 @@ const gameSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  topDisCard: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Card',
+  },
+  disCards: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Card',
+    },
+  ],
+  drawnCard: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Card',
+  },
   maxPlayers: {
     type: Number,
     default: 5,

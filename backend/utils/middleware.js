@@ -1,4 +1,6 @@
 const logger = require('./logger');
+const Game = require('../models/game');
+const jwt = require('jsonwebtoken');
 
 const requestLogger = (request, response, next) => {
   logger.info('Method:', request.method);
@@ -41,8 +43,31 @@ const errorHandler = (error, request, response, next) => {
   next(error);
 };
 
+const playerExtractor = async (req, res, next) => {
+  const { gameId } = req.params;
+  const token = req.get('authorization').split(' ')[1];
+  const decoded = jwt.verify(token, process.env.SECRET);
+  const username = decoded.username;
+  if (!token) return res.status(401).json({ error: 'token missimg' });
+  if (!username) return res.status(401).json({ error: 'token invalid' });
+  const game = await Game.findById(gameId).populate({
+    path: 'players',
+    populate: {
+      path: 'hand',
+      model: 'Card',
+    },
+  });
+  if (!game) return res.status(401).json({ error: 'game not found' });
+  const player = game.players.find((player) => player.username === username);
+  if (!player) return res.status(401).json({ error: 'player not found' });
+  req.player = player;
+  //console.log('playerExtractor Player: ' + req.player);
+  next();
+};
+
 module.exports = {
   requestLogger,
   unknownEndpoint,
   errorHandler,
+  playerExtractor,
 };

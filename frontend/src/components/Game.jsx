@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import useStateWithComparison from '../hooks/useStateWithComparison';
+import { useEffect, useState, useCallback } from 'react';
 import gameApi from '../api/gameApi';
 import { useParams } from 'react-router-dom';
 
@@ -7,7 +6,7 @@ const Game = () => {
   const { gameId } = useParams(); // Extract gameId from the URL
   // Game state data from server
   const [playersState, setPlayersState] = useState([{}]);
-  ///const [deckState, setDeckState] = useState([]);
+  const [disCardState, setdisCardState] = useState(null); //Only top card
   const [gameStartedState, setGameStartedState] = useState(false);
   const [whoseTurnState, setWhoseTurnState] = useState('') // Based on player id
 
@@ -15,13 +14,15 @@ const Game = () => {
   const [userNameState, setUserNameState] = useState('');
   const [initialCardsRevealed, setInitialCardsRevealed] = useState(false);
   const [joinedState, setJoinedState] = useState(false);
+  const [drawnCardState, setDrawnCardState] = useState(null);
 
   const fetchGameState = useCallback (async () =>{
     try {
-    const {players, curPlayerTurn, hasStarted} = await gameApi.fetchGame(gameId);
+    const {players, curPlayerTurn, hasStarted, topDisCard} = await gameApi.fetchGame(gameId);
     setPlayersState(players);
     setGameStartedState(hasStarted);
     setWhoseTurnState(curPlayerTurn);
+    if (topDisCard) setdisCardState(topDisCard);
     }catch(error){
       console.error('Error fetching game state:', error);
     }
@@ -100,9 +101,38 @@ const Game = () => {
     return joinedState
   };
 
-  const endTurn = async() => {
+  const handleEndTurn = async() => {
     await gameApi.endTurn(gameId);
     fetchGameState();
+  }
+
+  const handleDrawCard = async()=>{
+    const drawnCard = await gameApi.drawCard(gameId);
+    setDrawnCardState(drawnCard);
+    fetchGameState();
+  }
+
+  const handleDisCard = async()=>{
+    await gameApi.discardCard(gameId);
+    setDrawnCardState(null);
+    fetchGameState();
+  }
+
+  const handleCardSwap = async(cardIndex)=>{
+    const cardToSwap = await gameApi.swapCard(gameId, cardIndex);
+    setDrawnCardState(cardToSwap);
+    fetchGameState();
+  }
+
+  const handButtons = () =>{
+    return(
+      <div>
+        <button onClick={()=> handleCardSwap(0)}>0</button>
+        <button onClick={()=>handleCardSwap(1)}>1</button>
+        <button onClick={()=>handleCardSwap(2)}>2</button>
+        <button onClick={()=>handleCardSwap(3)}>3</button>
+      </div>
+    )
   }
 
   return (
@@ -125,7 +155,7 @@ const Game = () => {
         {playersState.length > 0 ? (
         <ul>
           {playersState.map((player, index) => (
-            <li key={index}>{player.username} -- {player.username === whoseTurnState ? 'X' : ''}</li>
+            <li key={index}>{player.username} -- {player.username === whoseTurnState ? handButtons() : ''}</li>
           ))}
         </ul>
       ) : (
@@ -137,8 +167,12 @@ const Game = () => {
       )}
       {gameStartedState &&
       <div>
-        <h2>Game started!</h2>
-        {userNameState === whoseTurnState && <button onClick={endTurn}>End Turn</button>}
+        <h3>Game started!</h3>
+        {userNameState === whoseTurnState && <button onClick={handleEndTurn}>End Turn</button>}
+        {userNameState === whoseTurnState && <button onClick={handleDrawCard}>Draw Card</button>}
+        {userNameState === whoseTurnState && <button onClick={handleDisCard}>Discard Card</button>}
+        {<p>Drawn Card: {JSON.stringify(drawnCardState)}</p>}
+        {<p>Discard Pile: {JSON.stringify(disCardState)}</p>}
       </div>
       }
     </div>

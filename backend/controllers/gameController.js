@@ -54,28 +54,24 @@ const joinGame = async (req, res) => {
 const startGame = async (req, res) => {
   try {
     const { gameId } = req.params;
+    const { player } = req;
     //console.log('gameId: ' + gameId);
-    const token = req.get('authorization').split(' ')[1];
+    //const token = req.get('authorization').split(' ')[1];
     //console.log('token: ' + token);
-    const game = await Game.findById(gameId)
-      .populate('players')
-      .populate('deck');
-    if (!game) {
-      return res.status(400).json({ error: 'Game not found' });
-    }
+    const game = await Game.findById(gameId).populate('players');
+    //if (!game) return res.status(400).json({ error: 'Game not found' });
 
-    const decoded = jwt.verify(token, process.env.SECRET);
-    const username = decoded.username;
+    //const decoded = jwt.verify(token, process.env.SECRET);
+    //const username = decoded.username;
     //console.log('decoded username: ' + username);
     //console.log('game player at 0 pos username: ' + game.players[0].username);
-    if (username !== game.players[0].username) {
+    if (player.username !== game.players[0].username)
       return res
         .status(401)
         .json({ error: 'Only player 1 can start the game.' });
-    }
 
     game.hasStarted = true;
-    game.curPlayerTurn = game.players[0].username;
+    game.curPlayerTurn = player.username;
     gameService.dealCards(game); //deal 4 cards to each player
     await game.save();
     res.json({ message: 'Game started & Cards Dealt' });
@@ -87,15 +83,12 @@ const startGame = async (req, res) => {
 const endTurn = async (req, res) => {
   try {
     const { gameId } = req.params;
-    const token = req.get('authorization').split(' ')[1];
-
-    const decoded = jwt.verify(token, process.env.SECRET);
-    const username = decoded.username;
-    await gameService.incrementCurPlayerTurn(gameId, username);
+    const { player } = req;
+    await gameService.incrementCurPlayerTurn(gameId, player);
 
     res.json({ message: 'Turn ended' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to end turn' });
+    res.status(500).json({ error: 'Failed to end turn', extraInfo: error });
   }
 };
 
@@ -103,7 +96,11 @@ const fetchGame = async (req, res) => {
   try {
     const { gameId } = req.params;
 
-    const game = await Game.findById(gameId).populate('players');
+    const game = await Game.findById(gameId)
+      .select('-drawnCard')
+      .select('-disCards')
+      .populate('players')
+      .populate('topDisCard');
 
     if (!game) {
       return res.status(400).json({ error: 'Game not found' });
@@ -114,30 +111,58 @@ const fetchGame = async (req, res) => {
   }
 };
 
-const fetchCards = async (req, res) => {
+const fetchInitCards = async (req, res) => {
   try {
     const { gameId } = req.params;
     const cardIndexes = req.get('cardIndexes');
+    const { player } = req;
 
     let revealedCards = [{}];
-    //Init card reveal. Check token and only reveal 2 random cards from own hand.
-    if (req.get('init') === 'true') {
-      const token = req.get('authorization').split(' ')[1];
-      const decoded = jwt.verify(token, process.env.SECRET);
-      const username = decoded.username;
-      revealedCards = await gameService.revealCards(
-        gameId,
-        cardIndexes,
-        username
-      );
-    }
 
-    //TODO: IMPLEMENT fetching all cards - when CABO is called, end of game.
+    revealedCards = await gameService.revealCards(
+      gameId,
+      cardIndexes,
+      player.username
+    );
 
     //console.log('revealedCards' + revealedCards);
     res.status(201).json(revealedCards);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch cards' });
+    res.status(500).json({ error: 'Failed to fetch cards', extraInfo: error });
+  }
+};
+
+const drawCard = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { player } = req;
+    const drawnCard = await gameService.drawCard(gameId, player);
+    res.status(201).json(drawnCard);
+  } catch (error) {
+    res.status(500).json('Failed to draw card: ' + error);
+  }
+};
+
+const disCard = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { player } = req;
+    await gameService.disCard(gameId, player);
+    res.status(201).json({ message: 'Card discarded...' });
+  } catch (error) {
+    res.status(500).json('Failed to draw card: ' + error);
+  }
+};
+
+const swapCards = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { player } = req;
+    const cardIndex = req.get('cardIndex');
+    const cardToSwap = await gameService.swapCards(gameId, player, cardIndex);
+    res.status(201).json(cardToSwap);
+  } catch (error) {
+    res.status(500).json('Failed to draw card: ' + error);
   }
 };
 
@@ -146,7 +171,10 @@ module.exports = {
   joinGame,
   startGame,
   fetchGame,
-  fetchCards,
+  fetchInitCards,
+  drawCard,
+  swapCards,
+  disCard,
   endTurn,
   resetDB,
 };

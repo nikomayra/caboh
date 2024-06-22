@@ -41,9 +41,6 @@ const reset = async () => {
 };
 
 const initialRevealSelectedCardsSelf = async (gameId) => {
-  //Parameters - 2 card positions (1, 2, 3, 4) & token
-  //Server Actions - lookup cards in player.hand database
-  //Return - card object array (suit/value), length 2
   const handPositions = [1, 1, 0, 0];
   for (let i = handPositions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -55,10 +52,12 @@ const initialRevealSelectedCardsSelf = async (gameId) => {
     headers: {
       Authorization: token,
       cardIndexes: randomCardIndexArray,
-      init: 'true',
     },
   };
-  const response = await axios.get(`${baseUrl}/fetch-cards/${gameId}`, config);
+  const response = await axios.get(
+    `${baseUrl}/fetch-init-cards/${gameId}`,
+    config
+  );
   return response.data;
 };
 
@@ -70,6 +69,40 @@ const endTurn = async (gameId) => {
     headers: { Authorization: token },
   };
   await axios.post(`${baseUrl}/end-turn/${gameId}`, null, config);
+};
+
+const drawCard = async (gameId) => {
+  const config = {
+    headers: { Authorization: token },
+  };
+  const response = await axios.post(
+    `${baseUrl}/draw-card/${gameId}`,
+    null,
+    config
+  );
+  return response.data;
+};
+
+const discardCard = async (gameId) => {
+  const config = {
+    headers: { Authorization: token },
+  };
+  await axios.post(`${baseUrl}/dis-card/${gameId}`, null, config);
+};
+
+const swapCard = async (gameId, cardIndex) => {
+  const config = {
+    headers: {
+      Authorization: token,
+      cardIndex: cardIndex,
+    },
+  };
+  const response = await axios.post(
+    `${baseUrl}/swap-cards/${gameId}`,
+    null,
+    config
+  );
+  return response.data;
 };
 
 //7 & 8 ability
@@ -94,5 +127,8 @@ export default {
   startGame,
   reset,
   initialRevealSelectedCardsSelf,
+  drawCard,
+  discardCard,
+  swapCard,
   endTurn,
 };

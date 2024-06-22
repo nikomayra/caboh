@@ -16,6 +16,14 @@ const playerSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Game',
   },
+  hasDrawnCard: {
+    type: Boolean,
+    default: false,
+  },
+  hasSwappedCards: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Custom validator to check uniqueness within the same game
