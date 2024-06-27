@@ -16,9 +16,9 @@ router.post(
   gameController.startGame
 );
 router.get(
-  '/api/games/fetch-init-cards/:gameId',
+  '/api/games/fetch-cards/:gameId',
   playerExtractor,
-  gameController.fetchInitCards
+  gameController.fetchCards
 );
 router.post(
   '/api/games/end-turn/:gameId',

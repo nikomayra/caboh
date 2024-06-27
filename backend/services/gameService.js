@@ -95,6 +95,7 @@ const incrementCurPlayerTurn = async (gameId, player) => {
     if (curPlayerIndex === pCount - 1) {
       //if its the last player we need to go back to 0
       game.curPlayerTurn = game.players[0].username;
+      game.round = game.round + 1;
     } else {
       //console.log('curPlayerIndex ' + curPlayerIndex);
       game.curPlayerTurn = game.players[curPlayerIndex + 1].username;
@@ -117,7 +118,6 @@ const incrementCurPlayerTurn = async (gameId, player) => {
 };
 
 const revealCards = async (gameId, cardIndexes, username) => {
-  let revealedCards = [{}];
   const cardIndexesNoCommas = cardIndexes.replace(/,/g, '');
   const cardIndexesToArray = Array.from(cardIndexesNoCommas);
   const game = await Game.findById(gameId).populate({
@@ -130,17 +130,14 @@ const revealCards = async (gameId, cardIndexes, username) => {
   const playerIndex = game.players.findIndex(
     (player) => player.username === username
   );
+  let revealedCards = [];
   for (let i = 0; i < 4; i++) {
     if (cardIndexesToArray[i] === '1') {
-      revealedCards[i] = {
+      revealedCards.push({
+        index: i,
         suit: game.players[playerIndex].hand[i].suit,
         value: game.players[playerIndex].hand[i].value,
-      };
-    } else {
-      revealedCards[i] = {
-        suit: 'unknown',
-        value: 'unknown',
-      };
+      });
     }
   }
 

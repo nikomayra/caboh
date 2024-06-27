@@ -38,7 +38,11 @@ const gameSchema = new mongoose.Schema({
   },
   maxPlayers: {
     type: Number,
-    default: 5,
+    default: 6,
+  },
+  round: {
+    type: Number,
+    default: 0,
   },
 });
 

@@ -54,10 +54,7 @@ const initialRevealSelectedCardsSelf = async (gameId) => {
       cardIndexes: randomCardIndexArray,
     },
   };
-  const response = await axios.get(
-    `${baseUrl}/fetch-init-cards/${gameId}`,
-    config
-  );
+  const response = await axios.get(`${baseUrl}/fetch-cards/${gameId}`, config);
   return response.data;
 };
 
@@ -106,10 +103,16 @@ const swapCard = async (gameId, cardIndex) => {
 };
 
 //7 & 8 ability
-const revealSelectedCardSelf = async () => {
-  //Parameters - 1 card positions (1, 2, 3, 4) & token
-  //Server Actions - lookup card in player.hand database
-  //Return - card object (suit/value)
+const revealSelectedCardSelf = async (gameId, targetPlayer, cardIndex) => {
+  const config = {
+    headers: {
+      Authorization: token,
+      targetPlayer: targetPlayer,
+      cardIndex: cardIndex,
+    },
+  };
+  const response = await axios.get(`${baseUrl}/fetch-cards/${gameId}`, config);
+  return response.data;
 };
 
 //9 & 10 ability
@@ -118,6 +121,17 @@ const revealSelectedCardOtherPlayer = async () => {
   //Server Actions - lookup card in player.hand database
   //Return - card object (suit/value)
 };
+
+//J & Q ability
+const swapAnyHandCards = async () => {
+  //Parameters - 1 card positions (1, 2, 3, 4) & other player id or username? & token
+  //Server Actions - lookup card in player.hand database
+  //Return - card object (suit/value)
+};
+
+//Black - K ability
+//Call revealSelectedCardOtherPlayer ...
+//Then call swapAnyHandCards if you like it...
 
 export default {
   setToken,
@@ -130,5 +144,6 @@ export default {
   drawCard,
   discardCard,
   swapCard,
+  revealSelectedCardSelf,
   endTurn,
 };

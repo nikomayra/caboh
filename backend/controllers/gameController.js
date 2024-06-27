@@ -22,7 +22,7 @@ const createGame = async (req, res) => {
     const newGame = await gameService.createGame();
     res.status(201).json({ message: 'Created game', gameId: newGame.id });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create game' });
+    res.status(500).json('Failed to create game' + error);
   }
 };
 
@@ -47,7 +47,7 @@ const joinGame = async (req, res) => {
       token,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to add player' });
+    res.status(500).json('Failed to add player' + error);
   }
 };
 
@@ -76,7 +76,7 @@ const startGame = async (req, res) => {
     await game.save();
     res.json({ message: 'Game started & Cards Dealt' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to start game' });
+    res.status(500).json('Failed to start game' + error);
   }
 };
 
@@ -88,7 +88,7 @@ const endTurn = async (req, res) => {
 
     res.json({ message: 'Turn ended' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to end turn', extraInfo: error });
+    res.status(500).json('Failed to end turn' + error);
   }
 };
 
@@ -107,19 +107,17 @@ const fetchGame = async (req, res) => {
     }
     res.status(201).json(game);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch game' });
+    res.status(500).json('Failed to fetch game' + error);
   }
 };
 
-const fetchInitCards = async (req, res) => {
+const fetchCards = async (req, res) => {
   try {
     const { gameId } = req.params;
     const cardIndexes = req.get('cardIndexes');
     const { player } = req;
 
-    let revealedCards = [{}];
-
-    revealedCards = await gameService.revealCards(
+    const revealedCards = await gameService.revealCards(
       gameId,
       cardIndexes,
       player.username
@@ -128,7 +126,7 @@ const fetchInitCards = async (req, res) => {
     //console.log('revealedCards' + revealedCards);
     res.status(201).json(revealedCards);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch cards', extraInfo: error });
+    res.status(500).json('Failed to fetch cards' + error);
   }
 };
 
@@ -171,7 +169,7 @@ module.exports = {
   joinGame,
   startGame,
   fetchGame,
-  fetchInitCards,
+  fetchCards,
   drawCard,
   swapCards,
   disCard,

@@ -4,7 +4,8 @@ const playerSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    minLength: 3,
+    minLength: 1,
+    maxLength: 10,
   },
   hand: [
     {
