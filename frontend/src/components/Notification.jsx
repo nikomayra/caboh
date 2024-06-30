@@ -1,22 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 
-const Notification = ({message, type}) => {
+const Notification = ({message, type, timer=2500}) => {
 
     const [isVisible, setIsVisible] = useState(false);  
 
-    const showNotification = () => {
+    const showNotification = useCallback(() => {
       setIsVisible(true);
       setTimeout(() => {
         setIsVisible(false);
-      }, 2000); // 2 seconds
-    };
+      }, timer); // 2.5 seconds
+    }, [timer]);
 
     useEffect(() => {
       if (message) {
         showNotification();
       }
-    }, [message]);
+    }, [message, showNotification]);
   
     const getNotificationStyle = (type) => {
       switch (type) {
@@ -53,7 +53,7 @@ const Notification = ({message, type}) => {
     notificationContent: {
       backgroundColor: '#fefefe',
       margin: 'auto',
-      padding: '10px 20px',
+      padding: '5px 5px',
       border: '1px solid #888',
       borderRadius: '5px',
       textAlign: 'center',
@@ -66,6 +66,7 @@ const Notification = ({message, type}) => {
     notification: PropTypes.object,
     message: PropTypes.string,
     type: PropTypes.string,
+    timer: PropTypes.number,
   }
   
   export default Notification

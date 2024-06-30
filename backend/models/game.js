@@ -42,7 +42,7 @@ const gameSchema = new mongoose.Schema({
   },
   round: {
     type: Number,
-    default: 0,
+    default: 1,
   },
 });
 

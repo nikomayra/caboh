@@ -55,20 +55,16 @@ const startGame = async (req, res) => {
   try {
     const { gameId } = req.params;
     const { player } = req;
-    //console.log('gameId: ' + gameId);
-    //const token = req.get('authorization').split(' ')[1];
-    //console.log('token: ' + token);
     const game = await Game.findById(gameId).populate('players');
-    //if (!game) return res.status(400).json({ error: 'Game not found' });
-
-    //const decoded = jwt.verify(token, process.env.SECRET);
-    //const username = decoded.username;
-    //console.log('decoded username: ' + username);
-    //console.log('game player at 0 pos username: ' + game.players[0].username);
     if (player.username !== game.players[0].username)
       return res
         .status(401)
         .json({ error: 'Only player 1 can start the game.' });
+
+    /* if (game.players.length < 2) ADD BACK AFTER TESTING...
+      return res
+        .status(401)
+        .json({ error: 'Need at least 2 players...' }); */
 
     game.hasStarted = true;
     game.curPlayerTurn = player.username;
@@ -99,6 +95,7 @@ const fetchGame = async (req, res) => {
     const game = await Game.findById(gameId)
       .select('-drawnCard')
       .select('-disCards')
+      .select('-deck')
       .populate('players')
       .populate('topDisCard');
 
@@ -107,7 +104,7 @@ const fetchGame = async (req, res) => {
     }
     res.status(201).json(game);
   } catch (error) {
-    res.status(500).json('Failed to fetch game' + error);
+    res.status(500).json('Failed to fetch game: ' + error);
   }
 };
 
@@ -116,12 +113,28 @@ const fetchCards = async (req, res) => {
     const { gameId } = req.params;
     const cardIndexes = req.get('cardIndexes');
     const { player } = req;
+    const targetPlayerName = req.get('targetPlayerName');
+    let revealedCards = null;
 
-    const revealedCards = await gameService.revealCards(
-      gameId,
-      cardIndexes,
-      player.username
-    );
+    if (player.hasViewedCards)
+      return res.status(401).json({ error: 'Already viewed card once...' });
+
+    if (targetPlayerName) {
+      revealedCards = await gameService.revealCards(
+        gameId,
+        cardIndexes,
+        targetPlayerName
+      );
+      player.hasViewedCards = true; // Player has done a view action (1 max per turn)
+      player.save();
+    } else {
+      // Initial card reveal
+      revealedCards = await gameService.revealCards(
+        gameId,
+        cardIndexes,
+        player.username
+      );
+    }
 
     //console.log('revealedCards' + revealedCards);
     res.status(201).json(revealedCards);
@@ -157,10 +170,54 @@ const swapCards = async (req, res) => {
     const { gameId } = req.params;
     const { player } = req;
     const cardIndex = req.get('cardIndex');
-    const cardToSwap = await gameService.swapCards(gameId, player, cardIndex);
-    res.status(201).json(cardToSwap);
+    const playerNames = req.get('playerNames');
+    const cardIndexes = req.get('cardIndexes');
+
+    if (playerNames && cardIndexes) {
+      /* console.log(
+        'playerNames, cardIndexes' + playerNames + ', ' + cardIndexes
+      ); */
+      await gameService.swapCards(
+        gameId,
+        player,
+        null,
+        playerNames,
+        cardIndexes
+      );
+    } else {
+      await gameService.swapCards(gameId, player, cardIndex, null, null);
+    }
+    res.status(201).json({ message: 'Cards swapped...' });
   } catch (error) {
     res.status(500).json('Failed to draw card: ' + error);
+  }
+};
+
+const numberOfActiveGames = async (req, res) => {
+  try {
+    const gamesInDB = await Game.find({ hasStarted: true });
+    res.status(201).json(gamesInDB.length);
+  } catch (error) {
+    res.status(500).json('Failed to find number of games: ' + error);
+  }
+};
+
+const numberOfPlayers = async (req, res) => {
+  try {
+    const playersInDB = await Player.find({});
+    res.status(201).json(playersInDB.length);
+  } catch (error) {
+    res.status(500).json('Failed to find number of players: ' + error);
+  }
+};
+
+const fetchDeckCount = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const DeckCount = await gameService.deckCount(gameId);
+    res.status(201).json(DeckCount);
+  } catch (error) {
+    res.status(500).json('Failed to find number of cards in deck: ' + error);
   }
 };
 
@@ -174,5 +231,8 @@ module.exports = {
   swapCards,
   disCard,
   endTurn,
+  numberOfActiveGames,
+  numberOfPlayers,
+  fetchDeckCount,
   resetDB,
 };

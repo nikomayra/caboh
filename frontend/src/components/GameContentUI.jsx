@@ -1,15 +1,20 @@
-import {useState} from 'react';
+import {useState, useEffect, useCallback} from 'react';
 import gameApi from '../api/gameApi';
 import PropTypes from 'prop-types';
 import cardService from '../services/cardService';
 import './GameContentUI.css'
-import tabletop from '../assets/tabletop.jpg'
 import Player from './Player';
+import CardPopup from './CardPopup';
+import storage from '../services/storage';
 
-const GameContentUI = ({gameId, fetchGameState, playersState = [], gameStartedState, discardCardState, notify}) =>{
+const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = [], checkIfMyTurn, gameStartedState, discardCardState, notify}) =>{
 
     const [drawnCardState, setDrawnCardState] = useState(null);
     const [hasAbility, setHasAbility] = useState(false);
+    const [Ability, setAbility] = useState('');
+    const [revealedCards, setRevealedCards] = useState([])
+
+    const [JQSelection, setJQSelection] = useState({ count: 0, targetNames: [], targetIndexes: [] });
 
     const handleDrawCard = async()=>{
         try{
@@ -22,85 +27,141 @@ const GameContentUI = ({gameId, fetchGameState, playersState = [], gameStartedSt
         }
     }
     
-    const handleDiscardCard = async()=>{
+    const handleDiscardCard = useCallback(async () => {
         await gameApi.discardCard(gameId);
         setDrawnCardState(null);
+        if (hasAbility) setHasAbility(false);
         fetchGameState();
-    }
-    
-    /*
-    NEED TO UPDATE: 
-    THIS PLAYER HAND BUTTONS SHOULD PROBABLY just set useState variables for 'targetCard1' and 'targetCard2'
-    There are 5 different player turn options which would require a target card...
-    2. Draw card > swap with hand card > end turn
-    3. Draw card > view one of own cards (7/8) > discard > end turn
-    4. Draw card > view one of other player cards (9/10) > discard > end turn
-    5. Draw card > swap any two cards between hands including your own (J/Q) > discard > end turn
-    6. Draw card > view one of other player cards & swap with hand card [optional] (BK) > discard > end turn
+    }, [gameId, hasAbility, fetchGameState]);
 
-    Only 3 are swap actions...
-    #2, 5, 6
-    Maybe we have a single handleCardSwap function, if its a J/Q/BK
-    
-    Lets have a function that just checks if its a card with an ability when drawn, and unhides a
-    use ability button (and maybe a useState to disable the discard button?).
-    Then either they can do a view card function or a swap function.
-    We can have two handlers for that
-    handleCardSwap -> takes in 
-    */
-    const handleCardSwap = async(cardIndex)=>{ 
-        const swappedCard = await gameApi.swapCard(gameId, cardIndex);
-        setDrawnCardState(swappedCard);
-        fetchGameState();
-    }
-
-    const handleUseAbility = () => {
+    const handleUseAbility = async() => {
+        if (drawnCardState.value === '7' || drawnCardState.value === '8'){
+            notify('Ability: Press one of your own cards to view it.', 'success', 5000);
+            setAbility('78');
+        }
+        if (drawnCardState.value === '9' || drawnCardState.value === '10'){
+            notify('Ability: Press another player\'s card to view it.', 'success', 5000);
+            setAbility('910');
+        }
+        if (drawnCardState.value === 'J' || drawnCardState.value === 'Q'){
+            notify('Ability: Press any TWO cards on the table to swap them.', 'success', 5000);
+            setAbility('JQ');
+        }
+        if ((drawnCardState.suit === 'Spades' || drawnCardState.suit === 'Clubs') && (drawnCardState.value === 'K')){ // Black King
+            notify('Ability: Press another player\'s card to view it.\nAND optionally swap with one of your cards.', 'success', 5000);
+            setAbility('BK');
+        }
         setHasAbility(false);
     }
 
-    const handleHandCardAction = () => {
-        //TBD
+    const handleHandCardAction = (playerName, cardIndex) => {
+        switch (Ability) {
+            case '78':
+                if(storage.loadPlayer().Player.username !== playerName){
+                    notify('You can only view your own card with this ability...', 'error', 5000);
+                }else{
+                    handleViewCard(null, cardIndex); //null for target - defaults to self in backend.
+                    setAbility('');
+                }
+                break;
+            case '910':
+                if(storage.loadPlayer().Player.username === playerName){
+                    notify('You can only view another player\'s card with this ability...', 'error', 5000);
+                }else{
+                    handleViewCard(playerName, cardIndex);
+                    setAbility('');
+                }
+                break;
+            case 'JQ':
+                if (JQSelection.count === 1 && JQSelection.targetNames[0] === playerName && JQSelection.targetIndexes[0] === cardIndex) {
+                    notify('You must select a different card...', 'error', 5000);
+                } else {
+                    setJQSelection(prev => ({
+                        count: prev.count + 1,
+                        targetNames: [...prev.targetNames, playerName],
+                        targetIndexes: [...prev.targetIndexes, cardIndex]
+                    }));
+                    notify(`${JQSelection.count + 1}/2 -> ${playerName}'s ${cardIndex} card selected...`, 'success', 3500);
+                }
+                break;
+            case 'BK':
+                //Stuff
+                break;
+            default:
+                if(storage.loadPlayer().Player.username !== playerName){
+                    notify('You can only swap with your own hand...', 'error', 5000);
+                }else{
+                    handleDefaultCardSwap(cardIndex);
+                }
+                break;
+        }
     }
 
     const hasAbilityCheck = (card) => {
         setHasAbility(cardService.checkIfCardHasAbility(card));
     }
 
+    const handleDefaultCardSwap = async(cardIndex)=>{
+        await gameApi.swapCards(gameId, cardIndex); //default hand swap
+        handleDiscardCard();
+        fetchGameState();
+    }
+
+    const handleJQCardSwap = useCallback(async (targetPlayerNames, cardIndexes) => {
+        await gameApi.swapCards(gameId, null, targetPlayerNames, cardIndexes); // J & Q swap
+        handleDiscardCard();
+        fetchGameState();
+    }, [gameId, handleDiscardCard, fetchGameState]);
+
+    useEffect(() => {
+        if (JQSelection.count === 2) {
+            handleJQCardSwap(JQSelection.targetNames, JQSelection.targetIndexes);
+            setJQSelection({ count: 0, targetNames: [], targetIndexes: [] });
+            setAbility('');
+        }
+    }, [JQSelection, handleJQCardSwap]);
+
+    const handleViewCard = async(targetPlayerName, cardIndex)=>{
+        const revealedCard = await gameApi.revealSelectedCard(gameId, targetPlayerName, cardIndex);
+        setRevealedCards(revealedCard);
+        handleDiscardCard();
+        fetchGameState();
+    }
+
+    const handleCloseRevealedCards = () => {
+        setRevealedCards([]);
+    }
+
     const gameUI = () =>{
         return(
             <div className="game-content-grid-container">
+                {revealedCards.length > 0 && (<CardPopup revealedCards={revealedCards} onClose={handleCloseRevealedCards}/>)}
                 <div className="left-side-UI">
-                    <button className="discard-card" onClick={handleDiscardCard}>
+                    <button className="discard-card" onClick={handleDiscardCard} disabled={checkIfMyTurn()}>
                         <span>Discard Pile</span>
                         <img src={cardService.getCardImageSrc(discardCardState)} alt='Discard Pile'/>
                     </button>
                     <button 
                         className={`drawn-card ${hasAbility ? 'glow' : ''}`} 
                         onClick={handleUseAbility}
-                        disabled={!hasAbility}
+                        disabled={!hasAbility || checkIfMyTurn()}
                     >
                         <span>Drawn Card</span>
                         <img src={cardService.getCardImageSrc(drawnCardState)} alt='Drawn Card'/>
                     </button>
-                    <button className="draw-pile" onClick={handleDrawCard}>
+                    <button className="draw-pile" onClick={handleDrawCard} disabled={checkIfMyTurn()}>
                         <span>Draw Pile</span>
                         <img src={cardService.getCardBackImageSrc()} alt='Draw Pile'/>
                     </button>
                 </div>
                 <div className="right-side-UI">
                     <div className="players">
-                        {/* {playersState.length > 0 && playersState.map((player, index) => (
-                            <Player key={index} playerName={player.username} cardHandAction={handleHandCardAction} />
-                        ))} */}
-                        <Player key={1} playerName={'111'} cardHandAction={handleHandCardAction} />
-                        <Player key={2} playerName={'222'} cardHandAction={handleHandCardAction} />
-                        <Player key={3} playerName={'333'} cardHandAction={handleHandCardAction} />
-                        <Player key={4} playerName={'444'} cardHandAction={handleHandCardAction} />
-                        <Player key={5} playerName={'5555555555'} cardHandAction={handleHandCardAction} />
-                        <Player key={6} playerName={'666'} cardHandAction={handleHandCardAction} />
+                        {playersState.length > 0 && playersState.map((player, index) => (
+                            <Player key={index} playerName={player.username} handCardAction={handleHandCardAction} />
+                        ))}
                     </div>
                     <div className="previous-actions">
-                        <span>DISPLAYS ACTIONS OF PREVIOUS TURN FOR ALL PLAYERS TO SEE WHAT HAPPENED...</span>
+                        <span>{}</span>
                     </div>
                 </div>
             </div>
@@ -130,7 +191,8 @@ const GameContentUI = ({gameId, fetchGameState, playersState = [], gameStartedSt
     
     return(
         <>
-          {gameStartedState ? gameUI() : lobbyUI()}
+          {gameStartedState && isPlayerInGame() ? gameUI() : lobbyUI()}
+          {(gameStartedState && !isPlayerInGame()) && <h1>Game Started without you...</h1>}
         </>
     )
 }
@@ -138,10 +200,12 @@ const GameContentUI = ({gameId, fetchGameState, playersState = [], gameStartedSt
 GameContentUI.propTypes = {
     gameId: PropTypes.string.isRequired,
     fetchGameState: PropTypes.func.isRequired,
+    isPlayerInGame: PropTypes.func.isRequired,
     gameStartedState: PropTypes.bool.isRequired,
     playersState: PropTypes.array.isRequired,
     discardCardState: PropTypes.object,
     notify: PropTypes.func.isRequired,
+    checkIfMyTurn: PropTypes.func.isRequired,
 }
 
 export default GameContentUI;

@@ -58,6 +58,22 @@ const initialRevealSelectedCardsSelf = async (gameId) => {
   return response.data;
 };
 
+//7 & 8 or 9 & 10 or BK ability
+const revealSelectedCard = async (gameId, targetPlayerName, cardIndex) => {
+  let handPositions = [0, 0, 0, 0];
+  handPositions[cardIndex] = 1;
+
+  const config = {
+    headers: {
+      Authorization: token,
+      cardIndexes: handPositions,
+      targetPlayerName: targetPlayerName,
+    },
+  };
+  const response = await axios.get(`${baseUrl}/fetch-cards/${gameId}`, config);
+  return response.data;
+};
+
 const endTurn = async (gameId) => {
   //Parameters - token
   //Server Actions - increment current player turn making sure to loop at player.length to 0
@@ -87,11 +103,14 @@ const discardCard = async (gameId) => {
   await axios.post(`${baseUrl}/dis-card/${gameId}`, null, config);
 };
 
-const swapCard = async (gameId, cardIndex) => {
+//default or J & Q ability
+const swapCards = async (gameId, cardIndex, playerNames, cardIndexes) => {
   const config = {
     headers: {
       Authorization: token,
       cardIndex: cardIndex,
+      cardIndexes: cardIndexes, //array of up to 2 indexes to be swapped.
+      playerNames: playerNames, //array of up to 2 player names to know which hands to use
     },
   };
   const response = await axios.post(
@@ -102,31 +121,19 @@ const swapCard = async (gameId, cardIndex) => {
   return response.data;
 };
 
-//7 & 8 ability
-const revealSelectedCardSelf = async (gameId, targetPlayer, cardIndex) => {
-  const config = {
-    headers: {
-      Authorization: token,
-      targetPlayer: targetPlayer,
-      cardIndex: cardIndex,
-    },
-  };
-  const response = await axios.get(`${baseUrl}/fetch-cards/${gameId}`, config);
+const fetchNumberOfGames = async () => {
+  const response = await axios.get(`${baseUrl}/number-of-games/`);
   return response.data;
 };
 
-//9 & 10 ability
-const revealSelectedCardOtherPlayer = async () => {
-  //Parameters - 1 card positions (1, 2, 3, 4) & other player id or username? & token
-  //Server Actions - lookup card in player.hand database
-  //Return - card object (suit/value)
+const fetchNumberOfPlayers = async () => {
+  const response = await axios.get(`${baseUrl}/number-of-players/`);
+  return response.data;
 };
 
-//J & Q ability
-const swapAnyHandCards = async () => {
-  //Parameters - 1 card positions (1, 2, 3, 4) & other player id or username? & token
-  //Server Actions - lookup card in player.hand database
-  //Return - card object (suit/value)
+const fetchDeckCount = async (gameId) => {
+  const response = await axios.get(`${baseUrl}/fetch-deck-count/${gameId}`);
+  return response.data;
 };
 
 //Black - K ability
@@ -143,7 +150,10 @@ export default {
   initialRevealSelectedCardsSelf,
   drawCard,
   discardCard,
-  swapCard,
-  revealSelectedCardSelf,
+  swapCards,
+  revealSelectedCard,
   endTurn,
+  fetchNumberOfGames,
+  fetchNumberOfPlayers,
+  fetchDeckCount,
 };

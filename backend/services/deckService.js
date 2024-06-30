@@ -2,7 +2,7 @@ const Card = require('../models/card');
 
 const generateRandomDeck = async () => {
   try {
-    const cards = await Card.find({});
+    const cards = await Card.find({}); //.find({ value: ['J', 'Q', 'K'] }).exec(); // use just J, Q, K for testing...
     return shuffleDeck(cards);
   } catch {
     console.error('Error generating random deck:', error);

@@ -25,6 +25,10 @@ const playerSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  hasViewedCards: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Custom validator to check uniqueness within the same game

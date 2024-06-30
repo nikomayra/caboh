@@ -1,11 +1,31 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
 import HelpWindow from './HelpWindow';
+import './GameSidebarUI.css'
+import gameApi from '../api/gameApi';
 
-const GameSidebarUI = ({gameId, gameStartedState, whoseTurnState, roundState, endTurn, startGame, joinGame, isPlayerInGame}) =>{
+const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whoseTurnState, roundState, endTurn, startGame, joinGame, isPlayerInGame}) =>{
 
     const [userName, setUserName] = useState('');
+    
+    const [totalPlayersOnline, setTotalPlayersOnline] = useState(null);
+    const [totalGamesOnline, setTotalGamesOnline] = useState(null);
 
+    useEffect(() => {
+      const fetchInitialData = async () => {
+        try {
+          const players = await gameApi.fetchNumberOfPlayers();
+          const games = await gameApi.fetchNumberOfGames();
+
+          setTotalPlayersOnline(players);
+          setTotalGamesOnline(games);
+        } catch (error) {
+          console.error('Failed to fetch initial data:', error);
+        }
+      };
+      fetchInitialData();
+    }, []);
+    
     const handleStartGame = () =>{
       startGame();
     }
@@ -26,7 +46,7 @@ const GameSidebarUI = ({gameId, gameStartedState, whoseTurnState, roundState, en
 
     const joinGameForm = () =>{
       return(
-      <form style={{ display: isPlayerInGame ? 'none' : '' }} onSubmit={handleJoinGame}>
+      <form style={{ display: isPlayerInGame() ? 'none' : '' }} onSubmit={handleJoinGame}>
             <label>
                 <input
                 type="text"
@@ -42,13 +62,13 @@ const GameSidebarUI = ({gameId, gameStartedState, whoseTurnState, roundState, en
 
     const gameInfo = () =>{
       return(
-        <div>
+        <div className='gameInfo'>
             <h3>Game Info:</h3>
-            <ul style={gameInfoStyle}>
-                <li>Game ID: {gameId}</li>
-                <li>Current Turn: {whoseTurnState}</li>
+            <ul>
+                <li>Username: {userName}</li>
                 <li>Round: {roundState}</li>
-                <li>Other Stuff: TBD</li>
+                <li>Current Turn: {whoseTurnState}</li>
+                <li>Draw Pile: {cardsLeftInDeck}/{52 - (playersState.length * 4)}</li>
             </ul>
         </div>
       )
@@ -56,13 +76,11 @@ const GameSidebarUI = ({gameId, gameStartedState, whoseTurnState, roundState, en
 
     const gameInfoLobby = () =>{
       return(
-        <div>
+        <div className='gameInfo'>
             <h3>Game Lobby Info:</h3>
-            <ul style={gameInfoStyle}>
-                <li>Game ID: {gameId}</li>
-                <li>Players Online: TBD</li>
-                <li>Active Games: TBD</li>
-                <li>Other Stuff: TBD</li>
+            <ul>
+                <li>Players playing: {totalPlayersOnline}</li>
+                <li>Active Games: {totalGamesOnline}</li>
             </ul>
         </div>
       )
@@ -70,73 +88,43 @@ const GameSidebarUI = ({gameId, gameStartedState, whoseTurnState, roundState, en
 
     const gameUI = () =>{
       return(
-        <div>
+        <>
           {gameInfo()}
-          <br/>
           <HelpWindow />
           <button onClick={handleEndTurn}>End Turn</button>
-        </div>
+        </>
       )
     }
 
     const lobbyUI = () =>{
       return(
-        <div>
+        <>
           {gameInfoLobby()}
           {joinGameForm()}
-          <br/>
           <HelpWindow />
           <button onClick={handleStartGame}>Start Game!</button>
-          <br/>
           <button onClick={handleDeleteLobby}>Delete Lobby</button>
-        </div>
+        </>
       )
     }
 
     return(
-        <div style={sideBarStyle}>
-          {gameStartedState ? gameUI() : lobbyUI()}
+        <div className='sideBarContent'>
+          {gameStartedState && isPlayerInGame() ? gameUI() : lobbyUI()}
         </div>
     )
 }
 
-const gameInfoStyle = {
-  listStyleType: 'none',
-  margin: '0px',
-  padding: '0px',
-}
-
-const sideBarStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  alignItems: 'center',
-  padding: '10px'
-}
-
 GameSidebarUI.propTypes = {
-    gameId: PropTypes.string.isRequired,
+  cardsLeftInDeck: PropTypes.number.isRequired,
+    playersState: PropTypes.array.isRequired,
     gameStartedState: PropTypes.bool.isRequired,
     whoseTurnState: PropTypes.string.isRequired,
     roundState: PropTypes.number.isRequired,
     endTurn: PropTypes.func.isRequired,
     startGame: PropTypes.func.isRequired,
     joinGame: PropTypes.func.isRequired,
-    isPlayerInGame: PropTypes.bool.isRequired,
+    isPlayerInGame: PropTypes.func.isRequired,
 }
 
 export default GameSidebarUI;
-
-
-/* {!gameStartedState && (
-    <button onClick={startGame}>Start Game</button>
-  )}
-  {gameStartedState &&
-  <div>
-    <h3>Game started!</h3>
-    {userNameState === whoseTurnState && <button onClick={handleEndTurn}>End Turn</button>}
-    {userNameState === whoseTurnState && <button onClick={handleDrawCard}>Draw Card</button>}
-    {userNameState === whoseTurnState && <button onClick={handleDisCard}>Discard Card</button>}
-    {<p>Drawn Card: {JSON.stringify(drawnCardState)}</p>}
-    {<p>Discard Pile: {JSON.stringify(disCardState)}</p>}
-  </div> */

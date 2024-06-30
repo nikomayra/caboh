@@ -61,21 +61,22 @@ const findGame = async (gameId, pops) => {
 
 const dealCards = async (game) => {
   const players = game.players;
-  //console.log('players: ' + players);
   const playerPromises = players.map(async (player) => {
     let drawnHand = game.deck.splice(0, 4);
     player.hand = player.hand.concat(drawnHand);
     await player.save();
   });
-  //console.log('players (after): ' + players);
   await Promise.all(playerPromises);
 };
 
 const playerCount = async (gameId) => {
-  //console.log('playerCount');
   const game = await Game.findById(gameId);
-  //console.log(game);
   return game.players.length;
+};
+
+const deckCount = async (gameId) => {
+  const game = await Game.findById(gameId);
+  return game.deck.length;
 };
 
 const incrementCurPlayerTurn = async (gameId, player) => {
@@ -85,30 +86,21 @@ const incrementCurPlayerTurn = async (gameId, player) => {
     if (!game) {
       throw new Error('Game not found');
     }
-    //console.log('incrementCurPlayerTurn');
     const curPlayerIndex = game.players.findIndex(
       (p) => p.username === player.username
     );
     const pCount = await playerCount(gameId);
-    //console.log('curPlayerIndex ' + curPlayerIndex);
-    //console.log('pCount ' + pCount);
     if (curPlayerIndex === pCount - 1) {
-      //if its the last player we need to go back to 0
       game.curPlayerTurn = game.players[0].username;
       game.round = game.round + 1;
     } else {
-      //console.log('curPlayerIndex ' + curPlayerIndex);
       game.curPlayerTurn = game.players[curPlayerIndex + 1].username;
     }
-    //console.log('game.curPlayerTurn (after) ' + game.curPlayerTurn);
-    //console.log('player' + player);
     if (!player.hasDrawnCard || game.drawnCard !== undefined)
-      // || game.drawnCard !== undefined)
-      throw new Error(
-        'Cannot end turn without drawing card or with a card in-hand...'
-      );
+      throw new Error('Cannot end turn without drawing card and discarding...');
     player.hasDrawnCard = false;
     player.hasSwappedCards = false;
+    player.hasViewedCards = false;
     await player.save();
     await game.save();
   } catch (error) {
@@ -146,21 +138,32 @@ const revealCards = async (gameId, cardIndexes, username) => {
 
 const drawCard = async (gameId, player) => {
   try {
-    const game = await Game.findById(gameId).populate('deck');
+    const game = await Game.findById(gameId)
+      .populate('deck')
+      .populate('disCards');
     if (!game) throw new Error('Game not found');
     if (player.username !== game.curPlayerTurn)
       throw new Error('Not your turn!');
-
     if (player.hasDrawnCard) throw new Error('Already drew card!');
+
     if (game.deck.length === 0) {
-      game.deck = game.disCards.slice(1, game.disCards.length);
-      await game.save();
+      const discardPileMinusTop = game.disCards.slice(0, -1);
+      const topOfDiscardPile = game.disCards.slice(-1);
+
+      game.disCards = topOfDiscardPile;
+      const shuffledDiscardPileMinusTop =
+        deckService.shuffleDeck(discardPileMinusTop);
+
+      game.deck.push(...shuffledDiscardPileMinusTop);
     }
+
     const card = game.deck.pop();
     game.drawnCard = card;
     await game.save();
+
     player.hasDrawnCard = true;
-    player.save();
+    await player.save();
+
     return card;
   } catch (error) {
     console.error(error);
@@ -187,9 +190,22 @@ const disCard = async (gameId, player) => {
   }
 };
 
-const swapCards = async (gameId, player, cardIndex) => {
+const swapCards = async (
+  gameId,
+  player,
+  cardIndex,
+  playerNames,
+  cardIndexes
+) => {
   try {
-    const game = await Game.findById(gameId);
+    const game = await Game.findById(gameId).populate({
+      path: 'players',
+      populate: {
+        path: 'hand',
+        model: 'Card',
+      },
+    });
+
     if (!game) throw new Error('Game not found');
     if (player.username !== game.curPlayerTurn)
       throw new Error('Not your turn!');
@@ -198,13 +214,51 @@ const swapCards = async (gameId, player, cardIndex) => {
     if (player.hasSwappedCards)
       throw new Error('Already swapped cards once...');
 
-    const cardToSwap = player.hand[cardIndex]; // temp holder
-    player.hand[cardIndex] = game.drawnCard; // hand card becomes drawnCard
-    game.drawnCard = cardToSwap; //drawnCard becomes handcard from temp holder
-    player.hasSwappedCards = true;
-    await player.save();
+    if (playerNames && cardIndexes) {
+      const playerNamesArray = playerNames.split(',');
+      const cardIndexesArray = cardIndexes
+        .split(',')
+        .map((idx) => parseInt(idx.trim(), 10));
+
+      if (cardIndexesArray.length !== 2 || playerNamesArray.length !== 2)
+        throw new Error('Invalid input for JQ swap');
+
+      console.log('playerNamesArray: ' + playerNamesArray);
+      console.log('cardIndexesArray: ' + cardIndexesArray);
+
+      const [player1Name, player2Name] = playerNamesArray;
+      const [cardIndex1, cardIndex2] = cardIndexesArray;
+      console.log(
+        'player1Name, player2Name: ' + player1Name + ', ' + player2Name
+      );
+      console.log('cardIndex1, cardIndex2: ' + cardIndex1 + ', ' + cardIndex2);
+
+      const player1 = game.players.find((p) => p.username === player1Name);
+      const player2 = game.players.find((p) => p.username === player2Name);
+      console.log('player1: ' + player1);
+      console.log('player2: ' + player2);
+
+      if (!player1 || !player2) throw new Error('Player not found');
+
+      const card1ToSwap = player1.hand[cardIndex1];
+      const card2ToSwap = player2.hand[cardIndex2];
+      console.log('card1ToSwap: ' + card1ToSwap);
+      console.log('card2ToSwap: ' + card2ToSwap);
+
+      player1.hand.set(cardIndex1, card2ToSwap);
+      player2.hand.set(cardIndex2, card1ToSwap);
+
+      await player1.save();
+      await player2.save();
+    } else {
+      const cardToSwap = player.hand[cardIndex]; // temp holder
+      player.hand[cardIndex] = game.drawnCard; // hand card becomes drawnCard
+      game.drawnCard = cardToSwap; //drawnCard becomes handcard from temp holder
+      player.hasSwappedCards = true;
+      await player.save();
+    }
+
     await game.save();
-    return cardToSwap;
   } catch (error) {
     console.error(error);
     throw error;
@@ -221,5 +275,6 @@ module.exports = {
   disCard,
   swapCards,
   playerCount,
+  deckCount,
   incrementCurPlayerTurn,
 };

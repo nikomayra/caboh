@@ -4,7 +4,12 @@ const router = express.Router();
 const { playerExtractor } = require('../utils/middleware');
 
 router.get('/api/games/reset', gameController.resetDB); //Delete before release...
-
+router.get('/api/games/number-of-games', gameController.numberOfActiveGames);
+router.get('/api/games/number-of-players', gameController.numberOfPlayers);
+router.get(
+  '/api/games/fetch-deck-count/:gameId',
+  gameController.fetchDeckCount
+);
 router.post('/api/games/create-game', gameController.createGame);
 router.post('/api/games/join-game/:gameId', gameController.joinGame);
 router.get('/api/games/:gameId', gameController.fetchGame);

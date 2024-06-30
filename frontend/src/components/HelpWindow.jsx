@@ -8,7 +8,7 @@ const HelpWindow = () => {
   };
 
   return (
-    <div>
+    <>
       <button onClick={toggleHelp}>Help</button>
 
       {isHelpVisible && (
@@ -18,22 +18,35 @@ const HelpWindow = () => {
             <h3>Gameplay...</h3>
             <ul>
                 <li>Each player is dealt 4 cards. These cards remain hidden to the player except for 2 initially.</li>
-                <li>Draw a card when its your turn. This card is only revealed to you.</li>
-                <li>You may swap this card with a card in your hand or, if available, use its ability.</li>
-                    <ul>
-                        <li>This remaining drawn card is then discarded.</li>
-                    </ul>
-                <li>Once 2 or more rounds have been played any player may then say press {'"'}Cabo!{'"'}, ending their turn.</li>
-                <li>A final round is played back to the player who pressed Cabo! and a winner is declared.</li>
+                <li>Draw a card when its your turn (highlights green - bottom). This card is only revealed to you.</li>
+                <li>You may perform one of three actions:</li>
+                  <ul>
+                    <li>1. Discard this card.</li>
+                    <li>2. Swap this card with one from your hand.</li>
+                    <li>3. Use this cards ability.</li>
+                  </ul>
+                <li>Ability cards glow blue, press it to activate and use.</li>
+                <li>Once 2 or more rounds have been played any player may then press {'"'}Caboh!{'"'}, ending their turn.</li>
+                <li>A final round is played back to the player who pressed {'"'}Caboh!{'"'} and a winner is declared.</li>
             </ul>
             <h3>Goals:</h3>
             <ul>
                 <li>The goal is to have the lowest total value hand at the end of the game.</li>
+                <ul>
+                    <li>Aces are 1 point.</li>
+                    <li>Red Kings are 0 points.</li>
+                    <li>The rest are standard values.</li>
+                </ul>
             </ul>
+            <br/>
+            <div  style={{fontStyle: 'italic'}}>
+              <p>Caboh game rules loosely based on golf card game</p>
+              <p>Card graphics by Freepik</p>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

@@ -12,15 +12,15 @@ const MainMenu = () => {
 
     return (
         <div className="menu-advanced-grid-container">
-            <div className ="header">Cabo: The Game</div>
+            <div className ="header">Caboh: The Game</div>
             <div className ="content">
                 <img className ="logo" src={logo} ></img>
-                <h2>{'It\'s Cabo Time!'}</h2>
+                <h2>{'It\'s Caboh Time!'}</h2>
                 <CreateGame />
                 <br/>
                 <button onClick = {handleReset}>Reset Database</button>
             </div>
-            <div className ="footer">Project developed by Nikomayra</div>
+            <div className="footer" style={{fontStyle: 'italic'}}>Project developed by Nikomayra</div>
         </div>
     )
 }
