@@ -79,63 +79,6 @@ const deckCount = async (gameId) => {
   return game.deck.length;
 };
 
-const incrementCurPlayerTurn = async (gameId, player) => {
-  try {
-    const game = await Game.findById(gameId).populate('players');
-
-    if (!game) {
-      throw new Error('Game not found');
-    }
-    const curPlayerIndex = game.players.findIndex(
-      (p) => p.username === player.username
-    );
-    const pCount = await playerCount(gameId);
-    if (curPlayerIndex === pCount - 1) {
-      game.curPlayerTurn = game.players[0].username;
-      game.round = game.round + 1;
-    } else {
-      game.curPlayerTurn = game.players[curPlayerIndex + 1].username;
-    }
-    if (!player.hasDrawnCard || game.drawnCard !== undefined)
-      throw new Error('Cannot end turn without drawing card and discarding...');
-    player.hasDrawnCard = false;
-    player.hasSwappedCards = false;
-    player.hasViewedCards = false;
-    await player.save();
-    await game.save();
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
-const revealCards = async (gameId, cardIndexes, username) => {
-  const cardIndexesNoCommas = cardIndexes.replace(/,/g, '');
-  const cardIndexesToArray = Array.from(cardIndexesNoCommas);
-  const game = await Game.findById(gameId).populate({
-    path: 'players',
-    populate: {
-      path: 'hand',
-      model: 'Card',
-    },
-  });
-  const playerIndex = game.players.findIndex(
-    (player) => player.username === username
-  );
-  let revealedCards = [];
-  for (let i = 0; i < 4; i++) {
-    if (cardIndexesToArray[i] === '1') {
-      revealedCards.push({
-        index: i,
-        suit: game.players[playerIndex].hand[i].suit,
-        value: game.players[playerIndex].hand[i].value,
-      });
-    }
-  }
-
-  return revealedCards;
-};
-
 const drawCard = async (gameId, player) => {
   try {
     const game = await Game.findById(gameId)
@@ -190,6 +133,87 @@ const disCard = async (gameId, player) => {
   }
 };
 
+const incrementCurPlayerTurn = async (gameId, player) => {
+  try {
+    const game = await Game.findById(gameId).populate('players');
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+    const curPlayerIndex = game.players.findIndex(
+      (p) => p.username === player.username
+    );
+    const pCount = await playerCount(gameId);
+    if (curPlayerIndex === pCount - 1) {
+      game.curPlayerTurn = game.players[0].username;
+      game.round = game.round + 1;
+    } else {
+      game.curPlayerTurn = game.players[curPlayerIndex + 1].username;
+    }
+    if (!player.hasDrawnCard || game.drawnCard !== undefined)
+      throw new Error('Cannot end turn without drawing card and discarding...');
+    player.hasDrawnCard = false;
+    player.hasSwappedCards = false;
+    player.hasViewedCards = false;
+    await player.save();
+    await game.save();
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+const revealCards = async (gameId, cardIndexes, username, myname = '') => {
+  const cardIndexesNoCommas = cardIndexes.replace(/,/g, '');
+  const cardIndexesToArray = Array.from(cardIndexesNoCommas);
+  const game = await Game.findById(gameId).populate({
+    path: 'players',
+    populate: {
+      path: 'hand',
+      model: 'Card',
+    },
+  });
+  //console.log('game: ' + game);
+  const playerIndex = game.players.findIndex(
+    (player) => player.username === username
+  );
+  let revealedCards = [];
+  for (let i = 0; i < 4; i++) {
+    if (cardIndexesToArray[i] === '1') {
+      revealedCards.push({
+        index: i,
+        suit: game.players[playerIndex].hand[i].suit,
+        value: game.players[playerIndex].hand[i].value,
+      });
+    }
+  }
+
+  let action = '';
+  if (revealedCards.length === 1) {
+    // Ignore the initial card reveal at start of game
+    if (username === myname) {
+      action =
+        myname +
+        ' viewed card ' +
+        revealedCards[0].index +
+        ' in their own hand.\n';
+    } else {
+      action =
+        myname +
+        ' viewed card ' +
+        revealedCards[0].index +
+        ' in ' +
+        username +
+        "'s hand.\n";
+    }
+  }
+
+  game.lastTurnSummary = game.lastTurnSummary.concat(action);
+  await game.save();
+
+  return revealedCards;
+};
+
 const swapCards = async (
   gameId,
   player,
@@ -214,6 +238,7 @@ const swapCards = async (
     if (player.hasSwappedCards)
       throw new Error('Already swapped cards once...');
 
+    let action = '';
     if (playerNames && cardIndexes) {
       const playerNamesArray = playerNames.split(',');
       const cardIndexesArray = cardIndexes
@@ -223,27 +248,28 @@ const swapCards = async (
       if (cardIndexesArray.length !== 2 || playerNamesArray.length !== 2)
         throw new Error('Invalid input for JQ swap');
 
-      console.log('playerNamesArray: ' + playerNamesArray);
-      console.log('cardIndexesArray: ' + cardIndexesArray);
-
       const [player1Name, player2Name] = playerNamesArray;
       const [cardIndex1, cardIndex2] = cardIndexesArray;
-      console.log(
-        'player1Name, player2Name: ' + player1Name + ', ' + player2Name
-      );
-      console.log('cardIndex1, cardIndex2: ' + cardIndex1 + ', ' + cardIndex2);
+
+      action =
+        player.username +
+        ' swapped ' +
+        player1Name +
+        "'s card " +
+        cardIndex1 +
+        ' with ' +
+        player2Name +
+        "'s card " +
+        cardIndex2 +
+        '.';
 
       const player1 = game.players.find((p) => p.username === player1Name);
       const player2 = game.players.find((p) => p.username === player2Name);
-      console.log('player1: ' + player1);
-      console.log('player2: ' + player2);
 
       if (!player1 || !player2) throw new Error('Player not found');
 
       const card1ToSwap = player1.hand[cardIndex1];
       const card2ToSwap = player2.hand[cardIndex2];
-      console.log('card1ToSwap: ' + card1ToSwap);
-      console.log('card2ToSwap: ' + card2ToSwap);
 
       player1.hand.set(cardIndex1, card2ToSwap);
       player2.hand.set(cardIndex2, card1ToSwap);
@@ -256,8 +282,14 @@ const swapCards = async (
       game.drawnCard = cardToSwap; //drawnCard becomes handcard from temp holder
       player.hasSwappedCards = true;
       await player.save();
+      action =
+        player.username +
+        ' swapped their card ' +
+        cardIndex +
+        ' with the card they drew.';
     }
 
+    game.lastTurnSummary = game.lastTurnSummary.concat(action);
     await game.save();
   } catch (error) {
     console.error(error);

@@ -46,19 +46,19 @@ const Notification = ({message, type, timer=2500}) => {
   const styles = {
     notification: {
       position: 'fixed',
-      top: '10px',
-      right: '10px',
+      top: '5px',
+      left: '5px',
       zIndex: 1000,
     },
     notificationContent: {
       backgroundColor: '#fefefe',
-      margin: 'auto',
-      padding: '5px 5px',
       border: '1px solid #888',
+      margin: 'auto',
       borderRadius: '5px',
       textAlign: 'center',
       color: 'white',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      fontSize: '75%'
     },
   };
 

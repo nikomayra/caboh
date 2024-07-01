@@ -7,14 +7,14 @@ import Player from './Player';
 import CardPopup from './CardPopup';
 import storage from '../services/storage';
 
-const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = [], checkIfMyTurn, gameStartedState, discardCardState, notify}) =>{
+const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = [], checkIfMyTurn, gameStartedState, discardCardState, notify, lastTurnSummary, whoseTurnState}) =>{
 
     const [drawnCardState, setDrawnCardState] = useState(null);
     const [hasAbility, setHasAbility] = useState(false);
     const [Ability, setAbility] = useState('');
     const [revealedCards, setRevealedCards] = useState([])
 
-    const [JQSelection, setJQSelection] = useState({ count: 0, targetNames: [], targetIndexes: [] });
+    const [cardsSelection, setCardsSelection] = useState({ count: 0, targetNames: [], targetIndexes: [] });
 
     const handleDrawCard = async()=>{
         try{
@@ -30,6 +30,8 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
     const handleDiscardCard = useCallback(async () => {
         await gameApi.discardCard(gameId);
         setDrawnCardState(null);
+        setCardsSelection({ count: 0, targetNames: [], targetIndexes: [] });
+        setAbility('');
         if (hasAbility) setHasAbility(false);
         fetchGameState();
     }, [gameId, hasAbility, fetchGameState]);
@@ -61,7 +63,6 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
                     notify('You can only view your own card with this ability...', 'error', 5000);
                 }else{
                     handleViewCard(null, cardIndex); //null for target - defaults to self in backend.
-                    setAbility('');
                 }
                 break;
             case '910':
@@ -69,23 +70,43 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
                     notify('You can only view another player\'s card with this ability...', 'error', 5000);
                 }else{
                     handleViewCard(playerName, cardIndex);
-                    setAbility('');
                 }
                 break;
             case 'JQ':
-                if (JQSelection.count === 1 && JQSelection.targetNames[0] === playerName && JQSelection.targetIndexes[0] === cardIndex) {
+                if (cardsSelection.count === 1 && cardsSelection.targetNames[0] === playerName && cardsSelection.targetIndexes[0] === cardIndex) {
                     notify('You must select a different card...', 'error', 5000);
                 } else {
-                    setJQSelection(prev => ({
+                    setCardsSelection(prev => ({
                         count: prev.count + 1,
                         targetNames: [...prev.targetNames, playerName],
                         targetIndexes: [...prev.targetIndexes, cardIndex]
                     }));
-                    notify(`${JQSelection.count + 1}/2 -> ${playerName}'s ${cardIndex} card selected...`, 'success', 3500);
+                    notify(`${cardsSelection.count + 1}/2 -> ${playerName}'s ${cardIndex} card selected...`, 'success', 3500);
                 }
                 break;
             case 'BK':
-                //Stuff
+                //Selection to view others card, first action
+                if (cardsSelection.count === 0 && (storage.loadPlayer().Player.username === playerName)){
+                    notify('You can only view another player\'s card with this ability...', 'error', 5000);
+                }else if(cardsSelection.count === 0){
+                    handleViewCard(playerName, cardIndex);
+                    setCardsSelection(prev => ({
+                        count: prev.count + 1,
+                        targetNames: [...prev.targetNames, playerName],
+                        targetIndexes: [...prev.targetIndexes, cardIndex]
+                    }));
+                    notify('You may now swap one of YOUR cards with this if you want...select your card', 'success', 5000);
+                }
+                // Selection of your own card to swap, second action
+                if(cardsSelection.count === 1 && !(storage.loadPlayer().Player.username === playerName)){
+                    notify('You can only swap with one of your OWN cards...retry selection', 'error', 5000);
+                }else if (cardsSelection.count === 1){
+                    setCardsSelection(prev => ({
+                        count: prev.count + 1,
+                        targetNames: [...prev.targetNames, playerName],
+                        targetIndexes: [...prev.targetIndexes, cardIndex]
+                    }));
+                }
                 break;
             default:
                 if(storage.loadPlayer().Player.username !== playerName){
@@ -97,6 +118,18 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
         }
     }
 
+    const handleTableCardSwap = useCallback(async (targetPlayerNames, cardIndexes) => {
+        await gameApi.swapCards(gameId, null, targetPlayerNames, cardIndexes);
+        handleDiscardCard();
+        fetchGameState();
+    }, [gameId, handleDiscardCard, fetchGameState]);
+
+    useEffect(() => {
+        if (cardsSelection.count === 2) {
+            handleTableCardSwap(cardsSelection.targetNames, cardsSelection.targetIndexes);
+        }
+    }, [cardsSelection, handleTableCardSwap]);
+
     const hasAbilityCheck = (card) => {
         setHasAbility(cardService.checkIfCardHasAbility(card));
     }
@@ -107,24 +140,10 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
         fetchGameState();
     }
 
-    const handleJQCardSwap = useCallback(async (targetPlayerNames, cardIndexes) => {
-        await gameApi.swapCards(gameId, null, targetPlayerNames, cardIndexes); // J & Q swap
-        handleDiscardCard();
-        fetchGameState();
-    }, [gameId, handleDiscardCard, fetchGameState]);
-
-    useEffect(() => {
-        if (JQSelection.count === 2) {
-            handleJQCardSwap(JQSelection.targetNames, JQSelection.targetIndexes);
-            setJQSelection({ count: 0, targetNames: [], targetIndexes: [] });
-            setAbility('');
-        }
-    }, [JQSelection, handleJQCardSwap]);
-
     const handleViewCard = async(targetPlayerName, cardIndex)=>{
         const revealedCard = await gameApi.revealSelectedCard(gameId, targetPlayerName, cardIndex);
         setRevealedCards(revealedCard);
-        handleDiscardCard();
+        if(Ability !== 'BK') handleDiscardCard();
         fetchGameState();
     }
 
@@ -157,14 +176,34 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
                 <div className="right-side-UI">
                     <div className="players">
                         {playersState.length > 0 && playersState.map((player, index) => (
-                            <Player key={index} playerName={player.username} handCardAction={handleHandCardAction} />
+                            <div key={index} className="player-container">
+                                <Player key={index} playerName={player.username} handCardAction={handleHandCardAction} />
+                            </div>
                         ))}
                     </div>
                     <div className="previous-actions">
-                        <span>{}</span>
+                        {lastTurnSummaryList()}
                     </div>
                 </div>
             </div>
+        )
+      }
+
+      const lastTurnSummaryList = () =>{
+        return(
+            <ul>
+                {lastTurnSummary.map((item, index) => {
+                // Calculate the opacity and font weight based on the index
+                const opacity = 1 - index * 0.2;
+                const fontWeight = index === 0 ? 'bold' : 'normal';
+
+                return (
+                    <li key={index} style={{ opacity, fontWeight }}>
+                    {item}
+                    </li>
+                );
+                })}
+            </ul>
         )
       }
 
@@ -206,20 +245,8 @@ GameContentUI.propTypes = {
     discardCardState: PropTypes.object,
     notify: PropTypes.func.isRequired,
     checkIfMyTurn: PropTypes.func.isRequired,
+    lastTurnSummary: PropTypes.array.isRequired,
+    whoseTurnState: PropTypes.string.isRequired,
 }
 
 export default GameContentUI;
-
-
-/* {!gameStartedState && (
-    <button onClick={startGame}>Start Game</button>
-  )}
-  {gameStartedState &&
-  <div>
-    <h3>Game started!</h3>
-    {userNameState === whoseTurnState && <button onClick={handleEndTurn}>End Turn</button>}
-    {userNameState === whoseTurnState && <button onClick={handleDrawCard}>Draw Card</button>}
-    {userNameState === whoseTurnState && <button onClick={handleDisCard}>Discard Card</button>}
-    {<p>Drawn Card: {JSON.stringify(drawnCardState)}</p>}
-    {<p>Discard Pile: {JSON.stringify(disCardState)}</p>}
-  </div> */

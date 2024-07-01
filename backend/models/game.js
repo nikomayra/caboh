@@ -44,6 +44,11 @@ const gameSchema = new mongoose.Schema({
     type: Number,
     default: 1,
   },
+  lastTurnSummary: [
+    {
+      type: String,
+    },
+  ],
 });
 
 gameSchema.set('toJSON', {

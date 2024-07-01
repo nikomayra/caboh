@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import HelpWindow from './HelpWindow';
 import './GameSidebarUI.css'
 import gameApi from '../api/gameApi';
+import storage from '../services/storage';
 
 const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whoseTurnState, roundState, endTurn, startGame, joinGame, isPlayerInGame}) =>{
 
@@ -10,6 +11,10 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whos
     
     const [totalPlayersOnline, setTotalPlayersOnline] = useState(null);
     const [totalGamesOnline, setTotalGamesOnline] = useState(null);
+
+    useEffect(() => {
+      setUserName(storage.loadPlayer().Player.username);
+    }, [userName]);
 
     useEffect(() => {
       const fetchInitialData = async () => {
@@ -60,6 +65,15 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whos
       )
     }
 
+    const lastPlayersTurn = () => {
+      if (playersState > 0){
+          const playerNames = playersState.map((player)=>player.username);
+          const index = playerNames.indexOf(whoseTurnState);
+          return index > 0 ? playerNames[index - 1] : null;
+      }
+      return null;
+    }
+
     const gameInfo = () =>{
       return(
         <div className='gameInfo'>
@@ -68,6 +82,7 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whos
                 <li>Username: {userName}</li>
                 <li>Round: {roundState}</li>
                 <li>Current Turn: {whoseTurnState}</li>
+                <li>Last Turn: {lastPlayersTurn()}</li>
                 <li>Draw Pile: {cardsLeftInDeck}/{52 - (playersState.length * 4)}</li>
             </ul>
         </div>

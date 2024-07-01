@@ -16,6 +16,7 @@ const Game = () => {
   const [gameStartedState, setGameStartedState] = useState(false);
   const [whoseTurnState, setWhoseTurnState] = useState('') // Based on player id
   const [roundState, setRoundState] = useState(0);
+  const [lastTurnSummaryState, setLastTurnSummaryState] = useState([]);
 
   // Client side states
   const [initialCardsRevealed, setInitialCardsRevealed] = useState(false);
@@ -25,11 +26,13 @@ const Game = () => {
 
   const fetchGameState = useCallback (async () =>{
     try {
-    const {players, curPlayerTurn, hasStarted, topDisCard, round} = await gameApi.fetchGame(gameId);
+    const {players, curPlayerTurn, hasStarted, topDisCard, round, lastTurnSummary} = await gameApi.fetchGame(gameId);
     setPlayersState(players);
     setGameStartedState(hasStarted);
     setWhoseTurnState(curPlayerTurn);
     setRoundState(round);
+    const last5TurnSummary = lastTurnSummary.slice(-5).reverse();
+    setLastTurnSummaryState(last5TurnSummary);
     const cards = await gameApi.fetchDeckCount(gameId);
     setCardsLeftInDeck(cards);
     if (topDisCard) setdiscardCardState(topDisCard);
@@ -150,6 +153,8 @@ const Game = () => {
               checkIfMyTurn={checkIfMyTurn}
               gameStartedState={gameStartedState}
               discardCardState={discardCardState}
+              lastTurnSummary={lastTurnSummaryState}
+              whoseTurnState={whoseTurnState}
               notify={notify}
               />
             </div>

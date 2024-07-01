@@ -123,7 +123,8 @@ const fetchCards = async (req, res) => {
       revealedCards = await gameService.revealCards(
         gameId,
         cardIndexes,
-        targetPlayerName
+        targetPlayerName,
+        player.username
       );
       player.hasViewedCards = true; // Player has done a view action (1 max per turn)
       player.save();
