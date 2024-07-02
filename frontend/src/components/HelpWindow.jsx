@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './HelpWindow.css'
 
 const HelpWindow = () => {
   const [isHelpVisible, setIsHelpVisible] = useState(false);
@@ -9,12 +10,12 @@ const HelpWindow = () => {
 
   return (
     <>
-      <button onClick={toggleHelp}>Help</button>
+      <button className='button' onClick={toggleHelp}>Help</button>
 
       {isHelpVisible && (
-        <div style={styles.modal}>
-          <div style={styles.modalContent}>
-            <span style={styles.close} onClick={toggleHelp}>&times;</span>
+        <div className='modal'>
+          <div className='modal-content'>
+            <span className='close' onClick={toggleHelp}>&times;</span>
             <h3>Gameplay...</h3>
             <ul>
                 <li>Create game, join game and start game. Minimum 2 players to start game. Only player 1 can start game. Game periodically updates, take your time.</li>
@@ -49,42 +50,6 @@ const HelpWindow = () => {
       )}
     </>
   );
-};
-
-const styles = {
-  modal: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'fixed',
-    zIndex: 1,
-    left: 0,
-    top: 0,
-    width: '100%',
-    height: '100%',
-    overflow: 'auto',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#fefefe',
-    margin: 'auto',
-    padding: '20px',
-    border: '1px solid #888',
-    width: '80%',
-    maxWidth: '600px',
-    borderRadius: '10px',
-    position: 'relative',
-  },
-  close: {
-    color: '#aaa',
-    float: 'right',
-    fontSize: '28px',
-    fontWeight: 'bold',
-    position: 'absolute',
-    top: '10px',
-    right: '10px',
-    cursor: 'pointer',
-  },
 };
 
 export default HelpWindow;

@@ -89,7 +89,7 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
     const gameInfoLobby = () =>{
       return(
         <div className='gameInfo'>
-            <h3>Game Lobby Info:</h3>
+            <h3>Game Info:</h3>
             <ul>
                 <li>Players playing: {totalPlayersOnline}</li>
                 <li>Active Games: {totalGamesOnline}</li>
@@ -108,8 +108,8 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
         <>
           {gameInfo()}
           <HelpWindow />
-          {roundState > 2 && !lastRound && checkIfMyTurn() && <button onClick={handleCallCaboh} className='Caboh-button'>Caboh!</button>}
-          <button onClick={handleEndTurn}>End Turn</button>
+          {roundState > 2 && !lastRound && checkIfMyTurn() && <button className='caboh-button' onClick={handleCallCaboh}>Caboh!</button>}
+          <button className='end-turn-button' onClick={handleEndTurn}>End Turn</button>
           {lastRound && <h3 style={{position: 'relative', bottom: '5px', margin: 'auto'}}>Final Round!</h3>}
         </>
       )
@@ -135,8 +135,9 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
           {gameInfoLobby()}
           {joinGameForm()}
           <HelpWindow />
-          {playerOneCheck() &&  <button onClick={handleStartGame}>Start Game!</button>}
-          {playerOneCheck() &&  <button onClick={returnToMenu}>Delete Lobby</button>}
+          {playerOneCheck() &&  <button className='start-button' onClick={handleStartGame}>Start Game!</button>}
+          <br/>
+          {playerOneCheck() &&  <button className='menu-button' onClick={returnToMenu}>Main Menu</button>}
         </>
       )
     }

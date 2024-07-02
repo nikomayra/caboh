@@ -183,6 +183,7 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
                         ))}
                     </div>
                     <div className="previous-actions">
+                        <h3 style={{margin: '0'}}>Previous actions:</h3>
                         {lastTurnSummaryList()}
                     </div>
                 </div>
