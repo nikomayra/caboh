@@ -1,20 +1,22 @@
 import {useState, useEffect} from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import HelpWindow from './HelpWindow';
 import './GameSidebarUI.css'
 import gameApi from '../api/gameApi';
 import storage from '../services/storage';
 
-const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whoseTurnState, roundState, endTurn, startGame, joinGame, isPlayerInGame}) =>{
-
+const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, checkIfMyTurn, whoseTurnState, roundState, endTurn, startGame, joinGame, isPlayerInGame, lastRound}) =>{
+  
+    const { gameId } = useParams(); // Extract gameId from the URL
     const [userName, setUserName] = useState('');
-    
     const [totalPlayersOnline, setTotalPlayersOnline] = useState(null);
     const [totalGamesOnline, setTotalGamesOnline] = useState(null);
+    const navigate  = useNavigate ();
 
     useEffect(() => {
       setUserName(storage.loadPlayer().Player.username);
-    }, [userName]);
+    }, []);
 
     useEffect(() => {
       const fetchInitialData = async () => {
@@ -39,14 +41,9 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whos
       endTurn();
     }
 
-    const handleDeleteLobby = () =>{
-      //TBD
-    }
-
     const handleJoinGame = (event) => {
         event.preventDefault();
         joinGame({userName});
-        //setUserName('');
     }
 
     const joinGameForm = () =>{
@@ -101,14 +98,35 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whos
       )
     }
 
+    const handleCallCaboh = async () => {
+        await gameApi.finalRound(gameId);
+        handleEndTurn();
+    }
+
     const gameUI = () =>{
       return(
         <>
           {gameInfo()}
           <HelpWindow />
+          {roundState > 2 && !lastRound && checkIfMyTurn() && <button onClick={handleCallCaboh} className='Caboh-button'>Caboh!</button>}
           <button onClick={handleEndTurn}>End Turn</button>
+          {lastRound && <h3 style={{position: 'relative', bottom: '5px', margin: 'auto'}}>Final Round!</h3>}
         </>
       )
+    }
+
+    const playerOneCheck = () => {
+      const myName = storage.loadPlayer().Player.username;
+      if(playersState.length > 0){
+        if (myName === playersState[0].username){
+          return true;
+        }
+      }
+      return false;
+    }
+
+    const returnToMenu = () =>{
+      navigate(`/`);
     }
 
     const lobbyUI = () =>{
@@ -117,8 +135,8 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, whos
           {gameInfoLobby()}
           {joinGameForm()}
           <HelpWindow />
-          <button onClick={handleStartGame}>Start Game!</button>
-          <button onClick={handleDeleteLobby}>Delete Lobby</button>
+          {playerOneCheck() &&  <button onClick={handleStartGame}>Start Game!</button>}
+          {playerOneCheck() &&  <button onClick={returnToMenu}>Delete Lobby</button>}
         </>
       )
     }
@@ -134,12 +152,14 @@ GameSidebarUI.propTypes = {
   cardsLeftInDeck: PropTypes.number.isRequired,
     playersState: PropTypes.array.isRequired,
     gameStartedState: PropTypes.bool.isRequired,
+    checkIfMyTurn: PropTypes.func.isRequired,
     whoseTurnState: PropTypes.string.isRequired,
     roundState: PropTypes.number.isRequired,
     endTurn: PropTypes.func.isRequired,
     startGame: PropTypes.func.isRequired,
     joinGame: PropTypes.func.isRequired,
     isPlayerInGame: PropTypes.func.isRequired,
+    lastRound: PropTypes.bool.isRequired,
 }
 
 export default GameSidebarUI;

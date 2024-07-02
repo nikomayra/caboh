@@ -61,10 +61,8 @@ const startGame = async (req, res) => {
         .status(401)
         .json({ error: 'Only player 1 can start the game.' });
 
-    /* if (game.players.length < 2) ADD BACK AFTER TESTING...
-      return res
-        .status(401)
-        .json({ error: 'Need at least 2 players...' }); */
+    if (game.players.length < 2)
+      return res.status(401).json({ error: 'Need at least 2 players...' });
 
     game.hasStarted = true;
     game.curPlayerTurn = player.username;
@@ -81,8 +79,7 @@ const endTurn = async (req, res) => {
     const { gameId } = req.params;
     const { player } = req;
     await gameService.incrementCurPlayerTurn(gameId, player);
-
-    res.json({ message: 'Turn ended' });
+    res.status(201).json({ message: 'Turn ended...' });
   } catch (error) {
     res.status(500).json('Failed to end turn' + error);
   }
@@ -222,6 +219,27 @@ const fetchDeckCount = async (req, res) => {
   }
 };
 
+const finalRound = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { player } = req;
+    await gameService.finalRoundFlags(gameId, player);
+    res.status(201).json({ message: 'Final round triggered...' });
+  } catch (error) {
+    res.status(500).json('Failed to trigger final round... ' + error);
+  }
+};
+
+const endGame = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    await gameService.deleteGameAndPlayers(gameId);
+    res.status(201).json({ message: 'Game & its Players Deleted...' });
+  } catch (error) {
+    res.status(500).json('Failed to delete game and players... ' + error);
+  }
+};
+
 module.exports = {
   createGame,
   joinGame,
@@ -235,5 +253,7 @@ module.exports = {
   numberOfActiveGames,
   numberOfPlayers,
   fetchDeckCount,
+  finalRound,
   resetDB,
+  endGame,
 };

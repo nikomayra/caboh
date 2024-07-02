@@ -13,6 +13,30 @@ const createGame = async () => {
   return savedNewGame;
 };
 
+const deleteGameAndPlayers = async (gameId) => {
+  try {
+    // Introduce a delay before deleting the game and players
+    setTimeout(async () => {
+      try {
+        const game = await Game.findById(gameId).populate('players');
+
+        if (game) {
+          // Delete all players associated with the game
+          await Player.deleteMany({ _id: { $in: game.players } });
+
+          // Delete the game itself
+          await Game.findByIdAndDelete(gameId);
+          console.log('Game and associated players deleted successfully.');
+        }
+      } catch (error) {
+        console.error('Error deleting game and players:', error);
+      }
+    }, 60000); // 1 minute delay (adjust as needed)
+  } catch (error) {
+    console.error('Error handling game end:', error);
+  }
+};
+
 const addPlayer = async (gameId, username) => {
   const game = await Game.findById(gameId);
   const newPlayer = new Player({ gameId, username });
@@ -140,26 +164,92 @@ const incrementCurPlayerTurn = async (gameId, player) => {
     if (!game) {
       throw new Error('Game not found');
     }
+
     const curPlayerIndex = game.players.findIndex(
       (p) => p.username === player.username
     );
     const pCount = await playerCount(gameId);
-    if (curPlayerIndex === pCount - 1) {
-      game.curPlayerTurn = game.players[0].username;
-      game.round = game.round + 1;
-    } else {
-      game.curPlayerTurn = game.players[curPlayerIndex + 1].username;
+
+    const lastPlayersName =
+      curPlayerIndex === 0
+        ? game.players[pCount - 1].username
+        : game.players[curPlayerIndex - 1].username;
+
+    let cabohPlayerCheck = false;
+    if (game.lastPlayerTurn === lastPlayersName && game.finalRound)
+      cabohPlayerCheck = true;
+
+    //You can end your turn without doing anything when you call Caboh - only pass...
+    if (!cabohPlayerCheck) {
+      if (!player.hasDrawnCard || game.drawnCard !== undefined)
+        throw new Error(
+          'Cannot end turn without drawing card and discarding...'
+        );
     }
-    if (!player.hasDrawnCard || game.drawnCard !== undefined)
-      throw new Error('Cannot end turn without drawing card and discarding...');
+
     player.hasDrawnCard = false;
     player.hasSwappedCards = false;
     player.hasViewedCards = false;
     await player.save();
-    await game.save();
+
+    if (game.finalRound && game.curPlayerTurn === game.lastPlayerTurn) {
+      game.finalScores = await finalScores(gameId);
+      game.scoreScreen = true;
+      await game.save();
+    } else {
+      if (curPlayerIndex === pCount - 1) {
+        game.curPlayerTurn = game.players[0].username;
+        game.round = game.round + 1;
+      } else {
+        game.curPlayerTurn = game.players[curPlayerIndex + 1].username;
+      }
+      game.scoreScreen = false;
+      await game.save();
+    }
   } catch (error) {
     console.error(error);
     throw error;
+  }
+};
+
+const finalScores = async (gameId) => {
+  try {
+    const game = await Game.findById(gameId).populate({
+      path: 'players',
+      populate: {
+        path: 'hand',
+        model: 'Card',
+      },
+    });
+
+    let scores = [];
+    for (let i = 0; i < game.players.length; i++) {
+      const player = game.players[i];
+      const playerScore = player.hand.reduce(
+        (total, card) => total + cardValue(card),
+        0
+      );
+      scores.push(playerScore);
+    }
+    return scores;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+const cardValue = (card) => {
+  switch (card.value) {
+    case 'K':
+      return card.suit === 'Hearts' || card.suit === 'Diamonds' ? 0 : 13;
+    case 'A':
+      return 1;
+    case 'Q':
+      return 12;
+    case 'J':
+      return 11;
+    default:
+      return parseInt(card.value, 10);
   }
 };
 
@@ -206,9 +296,9 @@ const revealCards = async (gameId, cardIndexes, username, myname = '') => {
         username +
         "'s hand.\n";
     }
+    game.lastTurnSummary = game.lastTurnSummary.concat(action);
   }
 
-  game.lastTurnSummary = game.lastTurnSummary.concat(action);
   await game.save();
 
   return revealedCards;
@@ -297,8 +387,37 @@ const swapCards = async (
   }
 };
 
+const finalRoundFlags = async (gameId, player) => {
+  const game = await Game.findById(gameId).populate('players');
+
+  if (!game) throw new Error('Game not found');
+  if (player.hasDrawnCard)
+    throw new Error(
+      'Calling Caboh counts as a turn, you cannot have drawn a card...'
+    );
+  if (game.finalRound) throw new Error('Caboh has already been called...');
+
+  const curPlayerIndex = game.players.findIndex(
+    (p) => p.username === player.username
+  );
+  //console.log('curPlayerIndex: ' + curPlayerIndex);
+  const pCount = await playerCount(gameId);
+  //console.log('pCount: ' + pCount);
+  if (curPlayerIndex === 0) {
+    //if first player
+    game.lastPlayerTurn = game.players[pCount - 1].username; //last player turn will be the previous player, aka last player
+  } else {
+    //if other player
+    game.lastPlayerTurn = game.players[curPlayerIndex - 1].username; //last player turn will be the previous player
+  }
+  //console.log('game.lastPlayerTurn: ' + game.lastPlayerTurn);
+  game.finalRound = true;
+  await game.save();
+};
+
 module.exports = {
   createGame,
+  deleteGameAndPlayers,
   findGame,
   addPlayer,
   dealCards,
@@ -309,4 +428,5 @@ module.exports = {
   playerCount,
   deckCount,
   incrementCurPlayerTurn,
+  finalRoundFlags,
 };

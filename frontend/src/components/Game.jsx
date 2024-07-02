@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import './Game.css'
 import gameApi from '../api/gameApi';
 import storage from '../services/storage';
@@ -14,23 +14,28 @@ const Game = () => {
   const [playersState, setPlayersState] = useState([]);
   const [discardCardState, setdiscardCardState] = useState(null); //Only top card
   const [gameStartedState, setGameStartedState] = useState(false);
-  const [whoseTurnState, setWhoseTurnState] = useState('') // Based on player id
+  const [whoseTurnState, setWhoseTurnState] = useState('');
   const [roundState, setRoundState] = useState(0);
   const [lastTurnSummaryState, setLastTurnSummaryState] = useState([]);
+  const [lastRound, setLastRound] = useState(false);
+  const [scoreScreenState, setScoreScreenState] = useState(false);
 
   // Client side states
   const [initialCardsRevealed, setInitialCardsRevealed] = useState(false);
   const [notification, setNotification] = useState(null)
   const [revealedCards, setRevealedCards] = useState([])
   const [cardsLeftInDeck, setCardsLeftInDeck] = useState(52);
+  const navigate  = useNavigate ();
 
   const fetchGameState = useCallback (async () =>{
     try {
-    const {players, curPlayerTurn, hasStarted, topDisCard, round, lastTurnSummary} = await gameApi.fetchGame(gameId);
+    const {players, curPlayerTurn, hasStarted, topDisCard, round, lastTurnSummary, finalRound, scoreScreen} = await gameApi.fetchGame(gameId);
     setPlayersState(players);
     setGameStartedState(hasStarted);
     setWhoseTurnState(curPlayerTurn);
     setRoundState(round);
+    setLastRound(finalRound);
+    setScoreScreenState(scoreScreen);
     const last5TurnSummary = lastTurnSummary.slice(-5).reverse();
     setLastTurnSummaryState(last5TurnSummary);
     const cards = await gameApi.fetchDeckCount(gameId);
@@ -52,6 +57,13 @@ const Game = () => {
       initialRevealedCards();
     }
   },[gameId, gameStartedState, initialCardsRevealed])
+
+  useEffect(() => {
+    const endGame = () =>{
+      navigate(`/games/score-screen/${gameId}`);
+    }
+    if (scoreScreenState) endGame();
+  },[gameId, navigate, scoreScreenState]);
 
   useEffect(() => {
     // Fetch game data on load
@@ -108,13 +120,13 @@ const Game = () => {
       await gameApi.endTurn(gameId);
       fetchGameState();
     }catch(error){
-      notify('You must draw a card and use its, swap it or discard it before ending your turn...', 'error');
+      notify('You must draw a card and use it, swap it or discard it before ending your turn...', 'error');
     } 
   }
 
   const checkIfMyTurn = () => {
     const me = storage.loadPlayer();
-    if(me.username === whoseTurnState){
+    if(me.Player.username === whoseTurnState){
         return true;
     }
     return false;
@@ -137,11 +149,13 @@ const Game = () => {
                 playersState={playersState}
                 gameStartedState={gameStartedState}
                 whoseTurnState={whoseTurnState}
+                checkIfMyTurn={checkIfMyTurn}
                 roundState={roundState}
                 endTurn={handleEndTurn} 
                 startGame={handleStartGame} 
                 joinGame={handleJoinGame} 
                 isPlayerInGame={isPlayerInGame}
+                lastRound={lastRound}
               />
             </div>
             <div className="content">
@@ -154,7 +168,6 @@ const Game = () => {
               gameStartedState={gameStartedState}
               discardCardState={discardCardState}
               lastTurnSummary={lastTurnSummaryState}
-              whoseTurnState={whoseTurnState}
               notify={notify}
               />
             </div>

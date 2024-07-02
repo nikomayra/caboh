@@ -7,7 +7,7 @@ import Player from './Player';
 import CardPopup from './CardPopup';
 import storage from '../services/storage';
 
-const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = [], checkIfMyTurn, gameStartedState, discardCardState, notify, lastTurnSummary, whoseTurnState}) =>{
+const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = [], checkIfMyTurn, gameStartedState, discardCardState, notify, lastTurnSummary}) =>{
 
     const [drawnCardState, setDrawnCardState] = useState(null);
     const [hasAbility, setHasAbility] = useState(false);
@@ -17,6 +17,7 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
     const [cardsSelection, setCardsSelection] = useState({ count: 0, targetNames: [], targetIndexes: [] });
 
     const handleDrawCard = async()=>{
+        //console.log('DRAWING CARD...');
         try{
             const drawnCard = await gameApi.drawCard(gameId);
             setDrawnCardState(drawnCard);
@@ -156,19 +157,19 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
             <div className="game-content-grid-container">
                 {revealedCards.length > 0 && (<CardPopup revealedCards={revealedCards} onClose={handleCloseRevealedCards}/>)}
                 <div className="left-side-UI">
-                    <button className="discard-card" onClick={handleDiscardCard} disabled={checkIfMyTurn()}>
+                    <button className="discard-card" onClick={handleDiscardCard} disabled={!checkIfMyTurn()}>
                         <span>Discard Pile</span>
                         <img src={cardService.getCardImageSrc(discardCardState)} alt='Discard Pile'/>
                     </button>
                     <button 
                         className={`drawn-card ${hasAbility ? 'glow' : ''}`} 
                         onClick={handleUseAbility}
-                        disabled={!hasAbility || checkIfMyTurn()}
+                        disabled={!hasAbility || !checkIfMyTurn()}
                     >
                         <span>Drawn Card</span>
                         <img src={cardService.getCardImageSrc(drawnCardState)} alt='Drawn Card'/>
                     </button>
-                    <button className="draw-pile" onClick={handleDrawCard} disabled={checkIfMyTurn()}>
+                    <button className="draw-pile" onClick={handleDrawCard} disabled={!checkIfMyTurn()}>
                         <span>Draw Pile</span>
                         <img src={cardService.getCardBackImageSrc()} alt='Draw Pile'/>
                     </button>
@@ -246,7 +247,6 @@ GameContentUI.propTypes = {
     notify: PropTypes.func.isRequired,
     checkIfMyTurn: PropTypes.func.isRequired,
     lastTurnSummary: PropTypes.array.isRequired,
-    whoseTurnState: PropTypes.string.isRequired,
 }
 
 export default GameContentUI;

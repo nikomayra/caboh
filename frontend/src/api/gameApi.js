@@ -34,12 +34,6 @@ const fetchGame = async (gameId) => {
   return response.data;
 };
 
-// delete for production...
-const reset = async () => {
-  const response = await axios.get(`${baseUrl}/reset`);
-  return response.data.message;
-};
-
 const initialRevealSelectedCardsSelf = async (gameId) => {
   const handPositions = [1, 1, 0, 0];
   for (let i = handPositions.length - 1; i > 0; i--) {
@@ -75,13 +69,15 @@ const revealSelectedCard = async (gameId, targetPlayerName, cardIndex) => {
 };
 
 const endTurn = async (gameId) => {
-  //Parameters - token
-  //Server Actions - increment current player turn making sure to loop at player.length to 0
-  //Return - current player turn as index
   const config = {
     headers: { Authorization: token },
   };
-  await axios.post(`${baseUrl}/end-turn/${gameId}`, null, config);
+  const response = await axios.post(
+    `${baseUrl}/end-turn/${gameId}`,
+    null,
+    config
+  );
+  return response.data;
 };
 
 const drawCard = async (gameId) => {
@@ -136,9 +132,25 @@ const fetchDeckCount = async (gameId) => {
   return response.data;
 };
 
-//Black - K ability
-//Call revealSelectedCardOtherPlayer ...
-//Then call swapAnyHandCards if you like it...
+const finalRound = async (gameId) => {
+  const config = {
+    headers: { Authorization: token },
+  };
+  await axios.post(`${baseUrl}/final-round/${gameId}`, null, config);
+};
+
+const endGame = async (gameId) => {
+  const config = {
+    headers: { Authorization: token },
+  };
+  await axios.post(`${baseUrl}/end-game/${gameId}`, null, config);
+};
+
+// delete for production...
+const reset = async () => {
+  const response = await axios.get(`${baseUrl}/reset`);
+  return response.data.message;
+};
 
 export default {
   setToken,
@@ -156,4 +168,6 @@ export default {
   fetchNumberOfGames,
   fetchNumberOfPlayers,
   fetchDeckCount,
+  finalRound,
+  endGame,
 };

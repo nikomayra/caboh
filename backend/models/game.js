@@ -22,6 +22,24 @@ const gameSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  finalRound: {
+    type: Boolean,
+    default: false,
+  },
+  scoreScreen: {
+    type: Boolean,
+    default: false,
+  },
+  finalScores: [
+    {
+      type: Number,
+    },
+  ],
+  lastPlayerTurn: {
+    //username
+    type: String,
+    default: '',
+  },
   topDisCard: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Card',

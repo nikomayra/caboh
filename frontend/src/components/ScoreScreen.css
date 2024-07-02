@@ -35,17 +35,6 @@ body {
   padding: 10px;
 }
 
-.reset {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  border: 1px solid #2b2b2b;
-  padding: 2px;
-  outline: none;
-  opacity: 0.2;
-  font-size: xx-small;
-}
-
 .logo {
   max-width: 50%;
   max-height: 50%;
