@@ -112,7 +112,6 @@ const fetchCards = async (req, res) => {
     const { player } = req;
     const targetPlayerName = req.get('targetPlayerName');
     let revealedCards = null;
-
     if (player.hasViewedCards)
       return res.status(401).json({ error: 'Already viewed card once...' });
 
@@ -125,13 +124,15 @@ const fetchCards = async (req, res) => {
       );
       player.hasViewedCards = true; // Player has done a view action (1 max per turn)
       player.save();
-    } else {
+    } else if (!player.initialCardsRevealed) {
       // Initial card reveal
       revealedCards = await gameService.revealCards(
         gameId,
         cardIndexes,
         player.username
       );
+      player.initialCardsRevealed = true;
+      await player.save();
     }
 
     //console.log('revealedCards' + revealedCards);

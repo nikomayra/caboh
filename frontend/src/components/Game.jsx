@@ -49,8 +49,12 @@ const Game = () => {
   useEffect(() =>{
     const initialRevealedCards = async () =>{
       const initialRevealedCards = await gameApi.initialRevealSelectedCardsSelf(gameId);
-      setRevealedCards(initialRevealedCards)
-      setInitialCardsRevealed(true);
+      if (initialRevealedCards) {
+        setRevealedCards(initialRevealedCards);
+        setInitialCardsRevealed(true);
+      } else {
+        setInitialCardsRevealed(true); // Set the state to true if already revealed
+      }
     }
 
     if (gameStartedState && !initialCardsRevealed) {

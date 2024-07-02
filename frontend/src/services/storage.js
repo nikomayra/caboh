@@ -9,13 +9,13 @@ const loadPlayer = () => {
   return player ? JSON.parse(player) : null;
 };
 
-/* const me = () => {
+const myName = () => {
   const player = loadPlayer();
-  return player ? player.username : null;
-}; */
+  return player ? player.Player.username : null;
+};
 
 const removePlayer = () => {
   localStorage.removeItem(KEY);
 };
 
-export default { savePlayer, loadPlayer, removePlayer };
+export default { savePlayer, loadPlayer, removePlayer, myName };

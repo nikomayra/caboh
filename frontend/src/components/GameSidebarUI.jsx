@@ -14,8 +14,8 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
     const [totalGamesOnline, setTotalGamesOnline] = useState(null);
     const navigate  = useNavigate ();
 
-    useEffect(() => {
-      setUserName(storage.loadPlayer().Player.username);
+    useEffect(() => { //on load
+      if(storage.myName()) setUserName(storage.myName());
     }, []);
 
     useEffect(() => {
@@ -57,7 +57,7 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
                 placeholder="Enter your username"
                 />
             </label>
-            <input type="submit" value="Join Game" />
+            <input className='join-button' type="submit" value="Join Game" />
         </form>
       )
     }
@@ -116,8 +116,8 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
     }
 
     const playerOneCheck = () => {
-      const myName = storage.loadPlayer().Player.username;
-      if(playersState.length > 0){
+      const myName = storage.myName();
+      if(playersState.length > 0 && myName){
         if (myName === playersState[0].username){
           return true;
         }

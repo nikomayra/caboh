@@ -7,12 +7,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://cabo-e6au.onrender.com',
+        target: 'http://localhost:3001',
         changeOrigin: true,
       },
     },
     historyApiFallback: true,
   },
 });
-
-//http://localhost:3001
