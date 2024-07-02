@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const config = require('./config/config');
+const path = require('path');
 require('express-async-errors');
 
 const app = express();
