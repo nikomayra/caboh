@@ -1,2 +1,2 @@
-# cabo
-Cabo card game
+# caboh
+Caboh card game
