@@ -17,6 +17,11 @@ app.use(middleware.requestLogger);
 
 app.use(gameRouter);
 
+// Catch-all handler to serve index.html for any non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 app.use(middleware.unknownEndpoint);
 app.use(middleware.errorHandler);
 
