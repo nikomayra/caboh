@@ -152,6 +152,16 @@ const reset = async () => {
   return response.data.message;
 };
 
+const revealFinalCards = async (gameId) => {
+  const config = {
+    headers: {
+      Authorization: token,
+    },
+  };
+  const response = await axios.get(`${baseUrl}/final-cards/${gameId}`, config);
+  return response.data;
+};
+
 export default {
   setToken,
   createGame,
@@ -170,4 +180,5 @@ export default {
   fetchDeckCount,
   finalRound,
   endGame,
+  revealFinalCards,
 };

@@ -9,20 +9,20 @@ const Player = ({playerName, handCardAction}) => {
     return(
         <div className='player-hand'>
         <span>{playerName}</span>
-            <button className='card' onClick={()=>handCardAction(playerName, 0)}>
-                <span>0</span>
-                <img src={cardService.getCardBackImageSrc()}/>
-            </button>
-            <button className='card' onClick={()=>handCardAction(playerName,1)}>
+            <button className='card' onClick={()=>handCardAction(playerName,0)}>
                 <span>1</span>
                 <img src={cardService.getCardBackImageSrc()}/>
             </button>
-            <button className='card' onClick={()=>handCardAction(playerName,2)}>
+            <button className='card' onClick={()=>handCardAction(playerName,1)}>
                 <span>2</span>
                 <img src={cardService.getCardBackImageSrc()}/>
             </button>
-            <button className='card' onClick={()=>handCardAction(playerName,3)}>
+            <button className='card' onClick={()=>handCardAction(playerName,2)}>
                 <span>3</span>
+                <img src={cardService.getCardBackImageSrc()}/>
+            </button>
+            <button className='card' onClick={()=>handCardAction(playerName,3)}>
+                <span>4</span>
                 <img src={cardService.getCardBackImageSrc()}/>
             </button>
         </div>

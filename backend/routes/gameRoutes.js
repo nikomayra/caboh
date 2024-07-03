@@ -26,6 +26,11 @@ router.get(
   playerExtractor,
   gameController.fetchCards
 );
+router.get(
+  '/api/games/final-cards/:gameId',
+  playerExtractor,
+  gameController.finalCards
+);
 router.post(
   '/api/games/end-turn/:gameId',
   playerExtractor,

@@ -33,11 +33,12 @@ body {
   justify-content: center;
   align-items: center;
   padding: 10px;
+  overflow-y: scroll;
 }
 
-.logo {
-  max-width: 50%;
-  max-height: 50%;
+.score-logo {
+  max-width: 20%;
+  max-height: 20%;
 }
 
 .footer {
@@ -45,4 +46,35 @@ body {
   background-color: #2b2b2b;
   color: white;
   padding: 10px;
+}
+
+.score-cards {
+  max-width: 60px;
+  height: auto;
+  margin-right: 2px;
+}
+
+.score-hands {
+  display: flex;
+  flex-direction: row;
+}
+
+.score-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.score-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.player-info {
+  margin-right: 20px;
+}
+
+.bold {
+  font-weight: bold;
 }

@@ -63,7 +63,7 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
                 if(storage.loadPlayer().Player.username !== playerName){
                     notify('You can only view your own card with this ability...', 'error', 5000);
                 }else{
-                    handleViewCard(null, cardIndex); //null for target - defaults to self in backend.
+                    handleViewCard(playerName, cardIndex); //null for target - defaults to self in backend.
                 }
                 break;
             case '910':

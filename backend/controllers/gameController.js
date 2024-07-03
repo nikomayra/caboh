@@ -111,7 +111,7 @@ const fetchCards = async (req, res) => {
     const cardIndexes = req.get('cardIndexes');
     const { player } = req;
     const targetPlayerName = req.get('targetPlayerName');
-    let revealedCards = null;
+    let revealedCards = [];
     if (player.hasViewedCards)
       return res.status(401).json({ error: 'Already viewed card once...' });
 
@@ -126,6 +126,7 @@ const fetchCards = async (req, res) => {
       player.save();
     } else if (!player.initialCardsRevealed) {
       // Initial card reveal
+      console.log('Initial cards!');
       revealedCards = await gameService.revealCards(
         gameId,
         cardIndexes,
@@ -241,6 +242,31 @@ const endGame = async (req, res) => {
   }
 };
 
+const finalCards = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const game = await Game.findById(gameId).populate('players');
+
+    if (!game.scoreScreen)
+      return res
+        .status(401)
+        .json({ error: 'Cannot reveal final cards before score screen...' });
+
+    const revealedCards = [];
+    for (let i = 0; i < game.players.length; i++) {
+      revealedCards[i] = await gameService.revealCards(
+        gameId,
+        '1,1,1,1',
+        game.players[i].username
+      );
+    }
+
+    res.status(201).json(revealedCards);
+  } catch (error) {
+    res.status(500).json('Failed to fetch cards' + error);
+  }
+};
+
 module.exports = {
   createGame,
   joinGame,
@@ -257,4 +283,5 @@ module.exports = {
   finalRound,
   resetDB,
   endGame,
+  finalCards,
 };

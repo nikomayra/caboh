@@ -11,7 +11,7 @@ const CardPopup = ({ revealedCards, onClose }) => {
             <div style={styles.cardContainer}>
                 {revealedCards.map((card, index) => (
                     <div key={index} style={styles.cards}>
-                        <h3 style={{color: 'black'}}>Card Position: {card.index}</h3>
+                        <h3 style={{color: 'black'}}>Card Position: {card.index + 1}</h3>
                         <img src={cardService.getCardImageSrc(card)}  style={styles.card}/>
                     </div>
                 ))}

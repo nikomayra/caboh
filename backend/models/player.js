@@ -6,6 +6,14 @@ const playerSchema = new mongoose.Schema({
     required: true,
     minLength: 1,
     maxLength: 10,
+    validate: {
+      validator: function (v) {
+        // Check if the username contains a comma
+        return !/,/.test(v);
+      },
+      message: (props) =>
+        `${props.value} contains a comma, which is not allowed.`,
+    },
   },
   hand: [
     {
