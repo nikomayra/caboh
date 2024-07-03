@@ -263,6 +263,7 @@ const revealCards = async (gameId, cardIndexes, username, myname = '') => {
       model: 'Card',
     },
   });
+
   //console.log('game: ' + game);
   const playerIndex = game.players.findIndex(
     (player) => player.username === username
@@ -285,13 +286,13 @@ const revealCards = async (gameId, cardIndexes, username, myname = '') => {
       action =
         myname +
         ' viewed card ' +
-        (revealedCards[0].index + 1) +
+        (praseInt(revealedCards[0].index) + 1) +
         ' in their own hand.\n';
     } else {
       action =
         myname +
         ' viewed card ' +
-        (revealedCards[0].index + 1) +
+        (praseInt(revealedCards[0].index) + 1) +
         ' in ' +
         username +
         "'s hand.\n";
@@ -375,7 +376,7 @@ const swapCards = async (
       action =
         player.username +
         ' swapped their card ' +
-        (cardIndex + 1) +
+        (parseInt(cardIndex) + 1) +
         ' with the card they drew.';
     }
 
