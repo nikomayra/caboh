@@ -286,13 +286,13 @@ const revealCards = async (gameId, cardIndexes, username, myname = '') => {
       action =
         myname +
         ' viewed card ' +
-        (praseInt(revealedCards[0].index) + 1) +
+        (parseInt(revealedCards[0].index) + 1) +
         ' in their own hand.\n';
     } else {
       action =
         myname +
         ' viewed card ' +
-        (praseInt(revealedCards[0].index) + 1) +
+        (parseInt(revealedCards[0].index) + 1) +
         ' in ' +
         username +
         "'s hand.\n";

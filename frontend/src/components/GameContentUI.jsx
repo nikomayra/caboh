@@ -7,7 +7,7 @@ import Player from './Player';
 import CardPopup from './CardPopup';
 import storage from '../services/storage';
 
-const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = [], checkIfMyTurn, gameStartedState, discardCardState, notify, lastTurnSummary}) =>{
+const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = [], checkIfMyTurn, gameStartedState, discardCardState, notify, endTurn, lastTurnSummary}) =>{
 
     const [drawnCardState, setDrawnCardState] = useState(null);
     const [hasAbility, setHasAbility] = useState(false);
@@ -33,9 +33,10 @@ const GameContentUI = ({gameId, isPlayerInGame,  fetchGameState, playersState = 
         setDrawnCardState(null);
         setCardsSelection({ count: 0, targetNames: [], targetIndexes: [] });
         setAbility('');
+        endTurn();
         if (hasAbility) setHasAbility(false);
         fetchGameState();
-    }, [gameId, hasAbility, fetchGameState]);
+    }, [gameId, endTurn, hasAbility, fetchGameState]);
 
     const handleUseAbility = async() => {
         if (drawnCardState.value === '7' || drawnCardState.value === '8'){
@@ -247,6 +248,7 @@ GameContentUI.propTypes = {
     discardCardState: PropTypes.object,
     notify: PropTypes.func.isRequired,
     checkIfMyTurn: PropTypes.func.isRequired,
+    endTurn: PropTypes.func.isRequired,
     lastTurnSummary: PropTypes.array.isRequired,
 }
 

@@ -1,14 +1,8 @@
 import CreateGame from "./CreateGame";
-import gameApi from '../api/gameApi';
 import './MainMenu.css'
 import logo from '../assets/Logo-temp.png';
 
 const MainMenu = () => {
-
-    const handleReset = async () =>{
-        const message = await gameApi.reset();
-        window.alert(message);
-    }
 
     return (
         <div className="menu-advanced-grid-container">
@@ -19,7 +13,7 @@ const MainMenu = () => {
                 <CreateGame />
                 <br/>
             </div>
-            <div className="footer" style={{fontStyle: 'italic'}}>Project developed by Nikomayra <button className='reset' onClick = {handleReset}>Reset Database</button></div>
+            <div className="footer" style={{fontStyle: 'italic'}}>Project developed by Nikomayra</div>
         </div>
     )
 }

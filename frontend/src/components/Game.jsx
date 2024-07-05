@@ -169,6 +169,7 @@ const Game = () => {
               fetchGameState={fetchGameState}
               playersState={playersState}
               checkIfMyTurn={checkIfMyTurn}
+              endTurn={handleEndTurn} 
               gameStartedState={gameStartedState}
               discardCardState={discardCardState}
               lastTurnSummary={lastTurnSummaryState}

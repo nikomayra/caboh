@@ -37,9 +37,9 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
       startGame();
     }
 
-    const handleEndTurn = () =>{
+ /*    const handleEndTurn = () =>{
       endTurn();
-    }
+    } */
 
     const handleJoinGame = (event) => {
         event.preventDefault();
@@ -81,6 +81,7 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
                 <li>Current Turn: {whoseTurnState}</li>
                 <li>Last Turn: {lastPlayersTurn()}</li>
                 <li>Draw Pile: {cardsLeftInDeck}/{52 - (playersState.length * 4)}</li>
+                {whoseTurnState === storage.myName() && <li style={{fontWeight: 'bold'}}>Your Turn!</li>}
             </ul>
         </div>
       )
@@ -100,7 +101,8 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
 
     const handleCallCaboh = async () => {
         await gameApi.finalRound(gameId);
-        handleEndTurn();
+        //handleEndTurn();
+        endTurn();
     }
 
     const gameUI = () =>{
@@ -109,7 +111,7 @@ const GameSidebarUI = ({cardsLeftInDeck, playersState=[], gameStartedState, chec
           {gameInfo()}
           <HelpWindow />
           {roundState > 2 && !lastRound && checkIfMyTurn() && <button className='caboh-button' onClick={handleCallCaboh}>Caboh!</button>}
-          <button className='end-turn-button' onClick={handleEndTurn}>End Turn</button>
+          {/* <button className='end-turn-button' onClick={handleEndTurn}>End Turn</button> */}
           {lastRound && <h3 style={{position: 'relative', bottom: '5px', margin: 'auto'}}>Final Round!</h3>}
         </>
       )
