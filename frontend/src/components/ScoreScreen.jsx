@@ -10,7 +10,7 @@ const ScoreScreen = () => {
     const navigate  = useNavigate ();
 
     const [playersData, setPlayersData] = useState([]);
-    const [playerHands, setPlayerHands] = useState([]);
+    //const [playerHands, setPlayerHands] = useState([]);
 
     const fetchGame = useCallback (async () =>{
         try {
@@ -20,6 +20,7 @@ const ScoreScreen = () => {
             const combinedData = players.map((player, i) => ({
               name: player.username,
               score: finalScores[i],
+              hand: revealedCards[i]
             }));
 
             // Sort players by their scores in descending order
@@ -35,9 +36,8 @@ const ScoreScreen = () => {
             });
 
             setPlayersData(combinedData);
-            setPlayerHands(revealedCards);
+            //setPlayerHands(revealedCards);
 
-            //Send POST request to delete this game and its associated players from the database after 1 minute delay...
             await gameApi.endGame(gameId);
         }catch(error){
           console.error('Error fetching final scores:', error);
@@ -53,13 +53,13 @@ const ScoreScreen = () => {
         navigate(`/`); // Navigate to the new game lobby
     }
 
-    const playerHandImages = (index) => {
+    const playerHandImages = (playerData) => {
         return(
             <div className = "score-hands">
-                <img className="score-cards" src={cardService.getCardImageSrc(playerHands[index][0])}/>
-                <img className="score-cards" src={cardService.getCardImageSrc(playerHands[index][1])}/>
-                <img className="score-cards" src={cardService.getCardImageSrc(playerHands[index][2])}/>
-                <img className="score-cards" src={cardService.getCardImageSrc(playerHands[index][3])}/>
+                <img className="score-cards" src={cardService.getCardImageSrc(playerData.hand[0])}/>
+                <img className="score-cards" src={cardService.getCardImageSrc(playerData.hand[1])}/>
+                <img className="score-cards" src={cardService.getCardImageSrc(playerData.hand[2])}/>
+                <img className="score-cards" src={cardService.getCardImageSrc(playerData.hand[3])}/>
             </div>
         )
     }
@@ -73,11 +73,11 @@ const ScoreScreen = () => {
                 <ul className="score-list">
                     {playersData.map((playerData, index) => (
                         <li key={index} className="score-list-item">
-                        <span className={`player-info ${index === 0 ? 'bold' : ''}`}>
-                            {playerData.rank}. {playerData.name} - {playerData.score} points
-                        </span>
-                        {playerHandImages(index)}
-                    </li>
+                            <span className={`player-info ${index === 0 ? 'bold' : ''}`}>
+                                {playerData.rank}. {playerData.name} - {playerData.score} points
+                            </span>
+                            {playerHandImages(playerData)}
+                        </li>
                     ))}
                 </ul>
                 <button onClick={returnToMenu}>Return to Main Menu</button>
