@@ -1,5 +1,5 @@
 const logger = require('./logger');
-const Game = require('../models/game');
+const { getDb } = require('../db');
 const jwt = require('jsonwebtoken');
 
 const requestLogger = (request, response, next) => {
@@ -43,25 +43,29 @@ const errorHandler = (error, request, response, next) => {
   next(error);
 };
 
+/**
+ * Resolve the authenticated player for a game route and attach to req.player.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
 const playerExtractor = async (req, res, next) => {
+  const { games } = getDb();
   const { gameId } = req.params;
-  const token = req.get('authorization').split(' ')[1];
+  const authHeader = req.get('authorization');
+  if (!authHeader) return res.status(401).json({ error: 'token missimg' });
+
+  const token = authHeader.split(' ')[1];
   const decoded = jwt.verify(token, process.env.SECRET);
   const username = decoded.username;
   if (!token) return res.status(401).json({ error: 'token missimg' });
   if (!username) return res.status(401).json({ error: 'token invalid' });
-  const game = await Game.findById(gameId).populate({
-    path: 'players',
-    populate: {
-      path: 'hand',
-      model: 'Card',
-    },
-  });
+
+  const game = await games.findById(gameId, { players: true, hands: true });
   if (!game) return res.status(401).json({ error: 'game not found' });
-  const player = game.players.find((player) => player.username === username);
+  const player = game.players.find((p) => p.username === username);
   if (!player) return res.status(401).json({ error: 'player not found' });
   req.player = player;
-  //console.log('playerExtractor Player: ' + req.player);
   next();
 };
 

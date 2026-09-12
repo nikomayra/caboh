@@ -1,14 +1,25 @@
-const Card = require('../models/card');
+const { getDb } = require('../db');
 
+/**
+ * Load all cards and return them in a shuffled order (ids preserved on each card).
+ * @returns {Promise<object[]>}
+ */
 const generateRandomDeck = async () => {
   try {
-    const cards = await Card.find({}); //.find({ value: ['J', 'Q', 'K'] }).exec(); // use just J, Q, K for testing...
-    return shuffleDeck(cards);
-  } catch {
+    const { cards } = getDb();
+    const allCards = await cards.findAll();
+    return shuffleDeck(allCards);
+  } catch (error) {
     console.error('Error generating random deck:', error);
+    throw error;
   }
 };
 
+/**
+ * Fisher–Yates shuffle (mutates and returns the same array).
+ * @param {unknown[]} deck
+ * @returns {unknown[]}
+ */
 const shuffleDeck = (deck) => {
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

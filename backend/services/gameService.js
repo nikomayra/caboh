@@ -1,80 +1,94 @@
-const Game = require('../models/game');
-const Player = require('../models/player');
-const Card = require('../models/card');
+const { getDb } = require('../db');
+const { toId } = require('../db/helpers');
 const deckService = require('./deckService');
 
+/**
+ * Create a new game with a shuffled deck of card references.
+ * @returns {Promise<object>}
+ */
 const createGame = async () => {
+  const { games } = getDb();
   const newDeck = await deckService.generateRandomDeck();
-  const newGame = new Game({
-    deck: newDeck,
-  });
-  const savedNewGame = await newGame.save();
-  //console.log('newGame created & saved to DB...');
+  const savedNewGame = await games.create({ deck: newDeck });
   return savedNewGame;
 };
 
+/**
+ * Schedule deletion of a game and its players after a short delay.
+ * @param {string} gameId
+ * @returns {Promise<void>}
+ */
 const deleteGameAndPlayers = async (gameId) => {
   try {
-    // Introduce a delay before deleting the game and players
     setTimeout(async () => {
       try {
-        const game = await Game.findById(gameId).populate('players');
+        const { games, players } = getDb();
+        const game = await games.findById(gameId, { players: true });
 
         if (game) {
-          // Delete all players associated with the game
-          await Player.deleteMany({ _id: { $in: game.players } });
-
-          // Delete the game itself
-          await Game.findByIdAndDelete(gameId);
+          await players.deleteManyByIds(game.players.map((p) => toId(p)));
+          await games.deleteById(gameId);
           console.log('Game and associated players deleted successfully.');
         }
       } catch (error) {
         console.error('Error deleting game and players:', error);
       }
-    }, 60000); // 1 minute delay (adjust as needed)
+    }, 60000);
   } catch (error) {
     console.error('Error handling game end:', error);
   }
 };
 
+/**
+ * Add a player to a game and persist the updated player list.
+ * @param {string} gameId
+ * @param {string} username
+ * @returns {Promise<object>}
+ */
 const addPlayer = async (gameId, username) => {
-  const game = await Game.findById(gameId);
-  const newPlayer = new Player({ gameId, username });
-  await newPlayer.save();
-  game.players.push(newPlayer._id);
-  await game.save();
+  const { games, players } = getDb();
+  const game = await games.findById(gameId);
+  if (!game) throw new Error('Game not found');
+
+  const newPlayer = await players.create({ gameId, username });
+  game.players.push(newPlayer.id);
+  await games.save(game);
   return newPlayer;
 };
 
+/**
+ * Find a game with optional related data hydrated.
+ * @param {string} gameId
+ * @param {'players'|'deck'|'hand-players'|'deck-players'|'none'} pops
+ * @returns {Promise<object>}
+ */
 const findGame = async (gameId, pops) => {
   try {
-    if (pops.length <= 0) throw new Error('pops is required');
-    let game = null;
+    if (!pops || pops.length <= 0) throw new Error('pops is required');
+    const { games } = getDb();
+    let options = {};
+
     switch (pops) {
       case 'players':
-        game = await Game.findById(gameId).populate('players');
+        options = { players: true };
         break;
       case 'deck':
-        game = await Game.findById(gameId).populate('deck');
+        options = { deck: true };
         break;
       case 'hand-players':
-        game = await Game.findById(gameId).populate({
-          path: 'players',
-          populate: {
-            path: 'hand',
-            model: 'Card',
-          },
-        });
+        options = { players: true, hands: true };
         break;
       case 'deck-players':
-        game = await Game.findById(gameId).populate('players').populate('deck');
+        options = { players: true, deck: true };
         break;
       case 'none':
-        game = await Game.findById(gameId);
+        options = {};
         break;
       default:
         throw new Error('pops should be players, deck, none, or all');
     }
+
+    const game = await games.findById(gameId, options);
     if (game === null) throw new Error('Game not found');
     return game;
   } catch (error) {
@@ -83,31 +97,52 @@ const findGame = async (gameId, pops) => {
   }
 };
 
+/**
+ * Deal 4 cards from the game deck into each player's hand (mutates game.deck).
+ * @param {object} game
+ * @returns {Promise<void>}
+ */
 const dealCards = async (game) => {
-  const players = game.players;
-  const playerPromises = players.map(async (player) => {
-    let drawnHand = game.deck.splice(0, 4);
+  const { players } = getDb();
+  const playerList = game.players;
+  const playerPromises = playerList.map(async (player) => {
+    const drawnHand = game.deck.splice(0, 4);
     player.hand = player.hand.concat(drawnHand);
-    await player.save();
+    await players.save(player);
   });
   await Promise.all(playerPromises);
 };
 
+/**
+ * @param {string} gameId
+ * @returns {Promise<number>}
+ */
 const playerCount = async (gameId) => {
-  const game = await Game.findById(gameId);
+  const { games } = getDb();
+  const game = await games.findById(gameId);
   return game.players.length;
 };
 
+/**
+ * @param {string} gameId
+ * @returns {Promise<number>}
+ */
 const deckCount = async (gameId) => {
-  const game = await Game.findById(gameId);
+  const { games } = getDb();
+  const game = await games.findById(gameId);
   return game.deck.length;
 };
 
+/**
+ * Draw the top card of the deck for the current player.
+ * @param {string} gameId
+ * @param {object} player
+ * @returns {Promise<object>}
+ */
 const drawCard = async (gameId, player) => {
   try {
-    const game = await Game.findById(gameId)
-      .populate('deck')
-      .populate('disCards');
+    const { games, players } = getDb();
+    const game = await games.findById(gameId, { deck: true, disCards: true });
     if (!game) throw new Error('Game not found');
     if (player.username !== game.curPlayerTurn)
       throw new Error('Not your turn!');
@@ -126,10 +161,10 @@ const drawCard = async (gameId, player) => {
 
     const card = game.deck.pop();
     game.drawnCard = card;
-    await game.save();
+    await games.save(game);
 
     player.hasDrawnCard = true;
-    await player.save();
+    await players.save(player);
 
     return card;
   } catch (error) {
@@ -138,28 +173,41 @@ const drawCard = async (gameId, player) => {
   }
 };
 
+/**
+ * Discard the currently drawn card.
+ * @param {string} gameId
+ * @param {object} player
+ * @returns {Promise<void>}
+ */
 const disCard = async (gameId, player) => {
   try {
-    const game = await Game.findById(gameId);
+    const { games } = getDb();
+    const game = await games.findById(gameId);
     if (!game) throw new Error('Game not found');
     if (player.username !== game.curPlayerTurn)
       throw new Error('Not your turn!');
 
-    if (game.drawnCard === undefined) throw new Error('Nothing to discard...');
+    if (game.drawnCard == null) throw new Error('Nothing to discard...');
     game.disCards.push(game.drawnCard);
     game.topDisCard = game.drawnCard;
-    game.drawnCard = undefined;
-    // implment useAbility (game, player)
-    await game.save();
+    game.drawnCard = null;
+    await games.save(game);
   } catch (error) {
     console.error(error);
     throw error;
   }
 };
 
+/**
+ * Advance turn to the next player, or finish the game after Caboh.
+ * @param {string} gameId
+ * @param {object} player
+ * @returns {Promise<void>}
+ */
 const incrementCurPlayerTurn = async (gameId, player) => {
   try {
-    const game = await Game.findById(gameId).populate('players');
+    const { games, players } = getDb();
+    const game = await games.findById(gameId, { players: true });
 
     if (!game) {
       throw new Error('Game not found');
@@ -179,9 +227,8 @@ const incrementCurPlayerTurn = async (gameId, player) => {
     if (game.lastPlayerTurn === lastPlayersName && game.finalRound)
       cabohPlayerCheck = true;
 
-    //You can end your turn without doing anything when you call Caboh - only pass...
     if (!cabohPlayerCheck) {
-      if (!player.hasDrawnCard || game.drawnCard !== undefined)
+      if (!player.hasDrawnCard || game.drawnCard != null)
         throw new Error(
           'Cannot end turn without drawing card and discarding...'
         );
@@ -190,12 +237,12 @@ const incrementCurPlayerTurn = async (gameId, player) => {
     player.hasDrawnCard = false;
     player.hasSwappedCards = false;
     player.hasViewedCards = false;
-    await player.save();
+    await players.save(player);
 
     if (game.finalRound && game.curPlayerTurn === game.lastPlayerTurn) {
       game.finalScores = await finalScores(gameId);
       game.scoreScreen = true;
-      await game.save();
+      await games.save(game);
     } else {
       if (curPlayerIndex === pCount - 1) {
         game.curPlayerTurn = game.players[0].username;
@@ -204,7 +251,7 @@ const incrementCurPlayerTurn = async (gameId, player) => {
         game.curPlayerTurn = game.players[curPlayerIndex + 1].username;
       }
       game.scoreScreen = false;
-      await game.save();
+      await games.save(game);
     }
   } catch (error) {
     console.error(error);
@@ -212,17 +259,16 @@ const incrementCurPlayerTurn = async (gameId, player) => {
   }
 };
 
+/**
+ * @param {string} gameId
+ * @returns {Promise<number[]>}
+ */
 const finalScores = async (gameId) => {
   try {
-    const game = await Game.findById(gameId).populate({
-      path: 'players',
-      populate: {
-        path: 'hand',
-        model: 'Card',
-      },
-    });
+    const { games } = getDb();
+    const game = await games.findById(gameId, { players: true, hands: true });
 
-    let scores = [];
+    const scores = [];
     for (let i = 0; i < game.players.length; i++) {
       const player = game.players[i];
       const playerScore = player.hand.reduce(
@@ -238,6 +284,10 @@ const finalScores = async (gameId) => {
   }
 };
 
+/**
+ * @param {{ suit: string, value: string }} card
+ * @returns {number}
+ */
 const cardValue = (card) => {
   switch (card.value) {
     case 'K':
@@ -253,22 +303,24 @@ const cardValue = (card) => {
   }
 };
 
+/**
+ * Reveal selected card indexes for a player and optionally log the action.
+ * @param {string} gameId
+ * @param {string} cardIndexes
+ * @param {string} username
+ * @param {string} [myname]
+ * @returns {Promise<Array<{index: number, suit: string, value: string}>>}
+ */
 const revealCards = async (gameId, cardIndexes, username, myname = '') => {
+  const { games } = getDb();
   const cardIndexesNoCommas = cardIndexes.replace(/,/g, '');
   const cardIndexesToArray = Array.from(cardIndexesNoCommas);
-  const game = await Game.findById(gameId).populate({
-    path: 'players',
-    populate: {
-      path: 'hand',
-      model: 'Card',
-    },
-  });
+  const game = await games.findById(gameId, { players: true, hands: true });
 
-  //console.log('game: ' + game);
   const playerIndex = game.players.findIndex(
     (player) => player.username === username
   );
-  let revealedCards = [];
+  const revealedCards = [];
   for (let i = 0; i < 4; i++) {
     if (cardIndexesToArray[i] === '1') {
       revealedCards.push({
@@ -281,7 +333,6 @@ const revealCards = async (gameId, cardIndexes, username, myname = '') => {
 
   let action = '';
   if (revealedCards.length === 1) {
-    // Ignore the initial card reveal at start of game
     if (username === myname) {
       action =
         myname +
@@ -300,11 +351,20 @@ const revealCards = async (gameId, cardIndexes, username, myname = '') => {
     game.lastTurnSummary = game.lastTurnSummary.concat(action);
   }
 
-  await game.save();
+  await games.save(game);
 
   return revealedCards;
 };
 
+/**
+ * Swap the drawn card with a hand card, or swap two players' cards (J/Q ability).
+ * @param {string} gameId
+ * @param {object} player
+ * @param {string|number|null} cardIndex
+ * @param {string|null} playerNames
+ * @param {string|null} cardIndexes
+ * @returns {Promise<void>}
+ */
 const swapCards = async (
   gameId,
   player,
@@ -313,18 +373,13 @@ const swapCards = async (
   cardIndexes
 ) => {
   try {
-    const game = await Game.findById(gameId).populate({
-      path: 'players',
-      populate: {
-        path: 'hand',
-        model: 'Card',
-      },
-    });
+    const { games, players } = getDb();
+    const game = await games.findById(gameId, { players: true, hands: true });
 
     if (!game) throw new Error('Game not found');
     if (player.username !== game.curPlayerTurn)
       throw new Error('Not your turn!');
-    if (game.drawnCard === undefined)
+    if (game.drawnCard == null)
       throw new Error('Nothing to swap (no drawnCard)...');
     if (player.hasSwappedCards)
       throw new Error('Already swapped cards once...');
@@ -362,17 +417,21 @@ const swapCards = async (
       const card1ToSwap = player1.hand[cardIndex1];
       const card2ToSwap = player2.hand[cardIndex2];
 
-      player1.hand.set(cardIndex1, card2ToSwap);
-      player2.hand.set(cardIndex2, card1ToSwap);
+      player1.hand[cardIndex1] = card2ToSwap;
+      player2.hand[cardIndex2] = card1ToSwap;
 
-      await player1.save();
-      await player2.save();
+      await players.save(player1);
+      await players.save(player2);
     } else {
-      const cardToSwap = player.hand[cardIndex]; // temp holder
-      player.hand[cardIndex] = game.drawnCard; // hand card becomes drawnCard
-      game.drawnCard = cardToSwap; //drawnCard becomes handcard from temp holder
+      // Keep the middleware/controller player object in sync with DB player
+      const dbPlayer = game.players.find((p) => p.id === player.id) || player;
+      const cardToSwap = dbPlayer.hand[cardIndex];
+      dbPlayer.hand[cardIndex] = game.drawnCard;
+      game.drawnCard = cardToSwap;
+      dbPlayer.hasSwappedCards = true;
       player.hasSwappedCards = true;
-      await player.save();
+      player.hand = dbPlayer.hand;
+      await players.save(dbPlayer);
       action =
         player.username +
         ' swapped their card ' +
@@ -381,15 +440,22 @@ const swapCards = async (
     }
 
     game.lastTurnSummary = game.lastTurnSummary.concat(action);
-    await game.save();
+    await games.save(game);
   } catch (error) {
     console.error(error);
     throw error;
   }
 };
 
+/**
+ * Mark Caboh / final-round flags on the game.
+ * @param {string} gameId
+ * @param {object} player
+ * @returns {Promise<void>}
+ */
 const finalRoundFlags = async (gameId, player) => {
-  const game = await Game.findById(gameId).populate('players');
+  const { games } = getDb();
+  const game = await games.findById(gameId, { players: true });
 
   if (!game) throw new Error('Game not found');
   if (player.hasDrawnCard)
@@ -401,19 +467,14 @@ const finalRoundFlags = async (gameId, player) => {
   const curPlayerIndex = game.players.findIndex(
     (p) => p.username === player.username
   );
-  //console.log('curPlayerIndex: ' + curPlayerIndex);
   const pCount = await playerCount(gameId);
-  //console.log('pCount: ' + pCount);
   if (curPlayerIndex === 0) {
-    //if first player
-    game.lastPlayerTurn = game.players[pCount - 1].username; //last player turn will be the previous player, aka last player
+    game.lastPlayerTurn = game.players[pCount - 1].username;
   } else {
-    //if other player
-    game.lastPlayerTurn = game.players[curPlayerIndex - 1].username; //last player turn will be the previous player
+    game.lastPlayerTurn = game.players[curPlayerIndex - 1].username;
   }
-  //console.log('game.lastPlayerTurn: ' + game.lastPlayerTurn);
   game.finalRound = true;
-  await game.save();
+  await games.save(game);
 };
 
 module.exports = {

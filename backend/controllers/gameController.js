@@ -1,22 +1,27 @@
-const Game = require('../models/game');
-const Player = require('../models/player');
-const Card = require('../models/card');
+const { getDb } = require('../db');
 const gameService = require('../services/gameService');
-//const deckService = require('../services/deckService');
 const generateToken = require('../utils/jwt');
-const jwt = require('jsonwebtoken');
 
-//Dev function
+/**
+ * Dev helper: wipe games and players.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const resetDB = async (req, res) => {
   try {
-    await Game.deleteMany({});
-    await Player.deleteMany({});
+    const { games, players } = getDb();
+    await games.deleteAll();
+    await players.deleteAll();
     res.status(200).json({ message: 'Database Reset' });
   } catch {
     res.status(500).json({ error: 'Failed to reset Database' });
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const createGame = async (req, res) => {
   try {
     const newGame = await gameService.createGame();
@@ -26,11 +31,16 @@ const createGame = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const joinGame = async (req, res) => {
   try {
+    const { games } = getDb();
     const { gameId } = req.params;
     const { userName } = req.body;
-    const game = await Game.findById(gameId);
+    const game = await games.findById(gameId);
     if (!game || game.hasStarted) {
       return res
         .status(400)
@@ -51,11 +61,16 @@ const joinGame = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const startGame = async (req, res) => {
   try {
+    const { games } = getDb();
     const { gameId } = req.params;
     const { player } = req;
-    const game = await Game.findById(gameId).populate('players');
+    const game = await games.findById(gameId, { players: true });
     if (player.username !== game.players[0].username)
       return res
         .status(401)
@@ -66,14 +81,18 @@ const startGame = async (req, res) => {
 
     game.hasStarted = true;
     game.curPlayerTurn = player.username;
-    gameService.dealCards(game); //deal 4 cards to each player
-    await game.save();
+    await gameService.dealCards(game);
+    await games.save(game);
     res.json({ message: 'Game started & Cards Dealt' });
   } catch (error) {
     res.status(500).json('Failed to start game' + error);
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const endTurn = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -85,16 +104,20 @@ const endTurn = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const fetchGame = async (req, res) => {
   try {
+    const { games } = getDb();
     const { gameId } = req.params;
 
-    const game = await Game.findById(gameId)
-      .select('-drawnCard')
-      .select('-disCards')
-      .select('-deck')
-      .populate('players')
-      .populate('topDisCard');
+    const game = await games.findById(gameId, {
+      players: true,
+      topDisCard: true,
+      omit: ['drawnCard', 'disCards', 'deck'],
+    });
 
     if (!game) {
       return res.status(400).json({ error: 'Game not found' });
@@ -105,8 +128,13 @@ const fetchGame = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const fetchCards = async (req, res) => {
   try {
+    const { players } = getDb();
     const { gameId } = req.params;
     const cardIndexes = req.get('cardIndexes');
     const { player } = req;
@@ -122,10 +150,9 @@ const fetchCards = async (req, res) => {
         targetPlayerName,
         player.username
       );
-      player.hasViewedCards = true; // Player has done a view action (1 max per turn)
-      player.save();
+      player.hasViewedCards = true;
+      await players.save(player);
     } else if (!player.initialCardsRevealed) {
-      // Initial card reveal
       console.log('Initial cards!');
       revealedCards = await gameService.revealCards(
         gameId,
@@ -133,16 +160,19 @@ const fetchCards = async (req, res) => {
         player.username
       );
       player.initialCardsRevealed = true;
-      await player.save();
+      await players.save(player);
     }
 
-    //console.log('revealedCards' + revealedCards);
     res.status(201).json(revealedCards);
   } catch (error) {
     res.status(500).json('Failed to fetch cards' + error);
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const drawCard = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -154,6 +184,10 @@ const drawCard = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const disCard = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -165,6 +199,10 @@ const disCard = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const swapCards = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -174,9 +212,6 @@ const swapCards = async (req, res) => {
     const cardIndexes = req.get('cardIndexes');
 
     if (playerNames && cardIndexes) {
-      /* console.log(
-        'playerNames, cardIndexes' + playerNames + ', ' + cardIndexes
-      ); */
       await gameService.swapCards(
         gameId,
         player,
@@ -193,24 +228,38 @@ const swapCards = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const numberOfActiveGames = async (req, res) => {
   try {
-    const gamesInDB = await Game.find({ hasStarted: true });
-    res.status(201).json(gamesInDB.length);
+    const { games } = getDb();
+    const count = await games.countStarted();
+    res.status(201).json(count);
   } catch (error) {
     res.status(500).json('Failed to find number of games: ' + error);
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const numberOfPlayers = async (req, res) => {
   try {
-    const playersInDB = await Player.find({});
-    res.status(201).json(playersInDB.length);
+    const { players } = getDb();
+    const count = await players.count();
+    res.status(201).json(count);
   } catch (error) {
     res.status(500).json('Failed to find number of players: ' + error);
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const fetchDeckCount = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -221,6 +270,10 @@ const fetchDeckCount = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const finalRound = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -232,6 +285,10 @@ const finalRound = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const endGame = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -242,10 +299,15 @@ const endGame = async (req, res) => {
   }
 };
 
+/**
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
 const finalCards = async (req, res) => {
   try {
+    const { games } = getDb();
     const { gameId } = req.params;
-    const game = await Game.findById(gameId).populate('players');
+    const game = await games.findById(gameId, { players: true });
 
     if (!game.scoreScreen)
       return res
