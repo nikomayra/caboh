@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const { getConnection } = require('./connection');
 const { toId, toIdArray } = require('../helpers');
 
@@ -92,7 +92,7 @@ const createGamesRepo = (cardsRepo, playersRepo) => {
    * @returns {Promise<object>}
    */
   const create = async (data = {}) => {
-    const id = uuidv4();
+    const id = randomUUID();
     const deckIds = toIdArray(data.deck || []);
 
     db.prepare(

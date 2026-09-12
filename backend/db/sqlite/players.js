@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const { getConnection } = require('./connection');
 const { toId, toIdArray } = require('../helpers');
 
@@ -62,7 +62,7 @@ const createPlayersRepo = (cardsRepo) => {
    * @returns {Promise<object>}
    */
   const create = async (data) => {
-    const id = uuidv4();
+    const id = randomUUID();
     const username = data.username;
     if (!username || /,/.test(username)) {
       throw new Error('Invalid username');

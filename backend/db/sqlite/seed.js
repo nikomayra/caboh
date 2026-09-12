@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 const SUITS = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
 const VALUES = [
@@ -32,7 +32,7 @@ const seedCardsIfEmpty = (db) => {
   const seed = db.transaction(() => {
     for (const suit of SUITS) {
       for (const value of VALUES) {
-        insert.run({ id: uuidv4(), suit, value });
+        insert.run({ id: randomUUID(), suit, value });
       }
     }
   });
